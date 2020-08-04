@@ -1,6 +1,10 @@
+// EXTI related functions
+
 #include "EXTI.h"
 
-void initLine9_5(uint8_t BUTTON_PIN) {
+// ex: initLine(BUTTON_B9, EXTI4_IRQn)
+// ex: initLine(BUTTON_B9, EXTI9_5IRQn)
+void initLine(uint8_t BUTTON_PIN, IRQn_Type IRQn_var) {
 	
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 	
@@ -15,8 +19,6 @@ void initLine9_5(uint8_t BUTTON_PIN) {
 	EXTI->FTSR |=  (1 << BUTTON_PIN);
 	
 	// Enable the NVIC interrupt for EXTI5 through EXTI9, inclusive (button on PB9)
-	NVIC_SetPriority(EXTI9_5_IRQn, 0x03);
-	NVIC_EnableIRQ(EXTI9_5_IRQn);
+	NVIC_SetPriority(IRQn_var, 0);
+	NVIC_EnableIRQ(IRQn_var);
 }
-
-
