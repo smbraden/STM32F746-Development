@@ -10,9 +10,10 @@ void RCC_GPIOB() {
 void initLED(uint8_t LED_PIN, GPIO_TypeDef* GPIOx) {
 	
 	// Set LED pin to push-pull low-speed output.
-	GPIOx->MODER  &= ~(0x3 << (LED_PIN*2));	// input mode (reset state)
-	GPIOx->MODER  |=  (0x1 << (LED_PIN*2));	// output mode
+	GPIOx->MODER  &= ~(0x3 << (LED_PIN*2));		// input mode (reset state)
+	GPIOx->MODER  |=  (0x1 << (LED_PIN*2));		// output mode
 	GPIOx->OTYPER &= ~(1 << LED_PIN);			// Push-pull output
+	GPIOx->PUPDR   &= ~(3 << (LED_PIN*2));		// No pull-up/pull-down resistors
 }
 
 void initButton(uint8_t BUTTON_PIN, GPIO_TypeDef* GPIOx) {

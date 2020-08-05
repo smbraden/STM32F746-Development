@@ -24,7 +24,7 @@ uint16_t timer_ms = 1000;			// timer milliseconds
 
 // Function prototypes
 void clockConfig(void);
-void TIM2_IRQ_handler(void);
+void TIM2_IRQHandler(void);
 
 
 int main(void) {
@@ -37,6 +37,9 @@ int main(void) {
 	
 	// enable clock for GPIOB port
 	RCC_GPIOB();
+	
+	// Enable the TIM2 clock.
+	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
 	
 	// Set LED pin to push-pull low-speed output.
 	initLED(LED1_PIN, GPIOB);
@@ -63,12 +66,17 @@ void clockConfig() {
 	// Configure the PLL to (HSI / PLLM) * PLLN / PLLP = 48 MHz.
 	//						(16 / 16) * 192 / 4 = 48 MHz
     
+    // reset/configure PLLM to 16		 		PLLM[5:0] = RCC_CFGR[5:0]
+	RCC->CFGR &= ~RCC_PLLCFGR_PLLM;
+	RCC->CFGR |= RCC_PLLCFGR_PLLM_4;	// 		= (0x10UL << RCC_PLLCFGR_PLLM_Pos)     /*!< 0x00000010 */
 	
-	// Pseudocode:
-    // configure PLLM to 16
-	// configure PLLN to 192
-	// configure PLLP to 4
+	// rest/configure PLLN to 192				PLLN[8:0] = RCC_CFGR[14:6]	
+	RCC->CFGR &= ~RCC_PLLCFGR_PLLN;
+	RCC->CFGR |= (192 << 6);
 	
+	// reset/configure PLLP to 4				PLLP[1:0] = RCC_CFGR[17:16]
+	RCC->CFGR &= ~RCC_PLLCFGR_PLLP;
+	RCC->CFGR |= RCC_PLLCFGR_PLLP_0;	//		= (0x1UL << RCC_PLLCFGR_PLLP_Pos)      /*!< 0x00010000 */
 	
     // Turn the PLL on and wait for it to be ready.
     RCC->CR |= (RCC_CR_PLLON);
@@ -85,10 +93,7 @@ void clockConfig() {
 }
 
 
-
-
-
-void TIM2_IRQ_handler(void) {
+void TIM2_IRQHandler(void) {
 	// Handle a timer 'update' interrupt event
 	if (TIM2->SR & TIM_SR_UIF) {
 		TIM2->SR &= ~(TIM_SR_UIF);
