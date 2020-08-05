@@ -1,5 +1,5 @@
 // A set of functions implementing the General Purpose Timer peripherals on the STM32F746
-
+#include "stm32f746xx.h"
 #include "GPT.h"
 
 void enableGPT(TIM_TypeDef* TIMx) {
@@ -23,7 +23,7 @@ void enableGPT(TIM_TypeDef* TIMx) {
 
 // GPT = "General Purpose Timer" 
 // For STM32F746, these include TIM2, TIM3, TIM4, TIM5
-void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t core_clock_hz) {
+void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t coreClock_hz) {
 	
 	// Timer's counter off
 	TIMx->CR1 &= ~(TIM_CR1_CEN);
@@ -48,7 +48,7 @@ void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t core_clock_hz) {
 	
 
 	// Set the timer prescaler/autoreload timing registers.
-	TIMx->PSC   = core_clock_hz / 1000;
+	TIMx->PSC   = coreClock_hz / 1000;
 	TIMx->ARR   = ms;
 	// Send an update event to reset the timer and apply settings.
 	TIMx->EGR  |= TIM_EGR_UG;

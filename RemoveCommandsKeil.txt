@@ -1,0 +1,5 @@
+git rm -r --cached DebugConfig
+git rm -r --cached Listings
+git rm -r --cached Objects
+git rm --cached *.uvguix.USER
+git rm --cached *.uvoptx

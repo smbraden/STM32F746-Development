@@ -1,6 +1,5 @@
 // Extended Interrupts and events Controller (EXTI)
 // function definitions
-
 #include "EXTI.h"
 
 // ex: initLine(BUTTON_B9, EXTI4_IRQn)

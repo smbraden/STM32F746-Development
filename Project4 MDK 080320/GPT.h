@@ -1,5 +1,4 @@
 // A set of functions implementing the General Purpose Timer peripherals on the STM32F746
-
 #include "stm32f746xx.h"
 
 void enableGPT(TIM_TypeDef* TIMx);

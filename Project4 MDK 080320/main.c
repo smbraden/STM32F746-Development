@@ -20,7 +20,7 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 // Global variables
 volatile uint8_t core_clock_hz;
-uint16_t timer_ms = 1500;			// timer milliseconds
+uint16_t timer_ms = 1000;			// timer milliseconds
 
 // Function prototypes
 void clockConfig(void);
@@ -28,6 +28,7 @@ void TIM2_IRQHandler(void);
 
 
 int main(void) {
+	
 	
 	// Configure the clock for PLL at 48 MHz
 	clockConfig();
@@ -49,7 +50,6 @@ int main(void) {
 	GPIOB->ODR |= (1 << LED2_PIN);
 	
 	// Enable the NVIC interrupt for TIM2.
-	// (Timer peripheral initialized and used elsewhere)
 	NVIC_SetPriority(TIM2_IRQn, 0x0);
 	NVIC_EnableIRQ(TIM2_IRQn);
 
@@ -65,23 +65,43 @@ int main(void) {
 
 void clockConfig() {
 	
+	// set the Flash Latency to 1 wait state in order to access Flash memory at 48 MHz
+	// The default boots to zero wait state.
+	// LATENCY[3:0]	lives in the FLASH->ACR register
+	/*
+		These bits represent the ratio of the CPU clock period to the Flash memory access time.
+		0000: Zero wait state
+		0001: One wait state
+		0010: Two wait states
+		...
+		...		
+		1110: Fourteen wait states
+		1111: Fifteen wait states
+	*/
+
+	// Also, enable the prefetch buffer in order to help compensate for slower reading
+	FLASH->ACR |= FLASH_ACR_LATENCY_1WS | FLASH_ACR_PRFTEN;
+	
 	// SYSCLK will be derived from PLLCLK
 	// HSI = 16MHz is the clock source at bootup
 	// Configure the PLL to (HSI / PLLM) * PLLN / PLLP = 48 MHz.
 	//						(16 / 16) * 192 / 4 = 48 MHz
     
+	// Keep the PLL off while configuraing M, N, P
+    RCC->CR &= ~(RCC_CR_PLLON);
+	
     // reset/configure PLLM to 16		 		PLLM[5:0] = RCC_CFGR[5:0]
 	RCC->PLLCFGR &= ~RCC_PLLCFGR_PLLM;
 	RCC->PLLCFGR |= RCC_PLLCFGR_PLLM_4;		//	= (0x10UL << RCC_PLLCFGR_PLLM_Pos)     /*!< 0x00000010 */
 	
 	// rest/configure PLLN to 192				PLLN[8:0] = RCC_CFGR[14:6]	
 	RCC->PLLCFGR &= ~RCC_PLLCFGR_PLLN;
-	RCC->PLLCFGR |= (0xC0 << 6);			// 		= 0b11000000
+	RCC->PLLCFGR |= (192 << 6);				// 	|=(0xC0 << 6)	|= 0b11000000
 	//RCC->PLLCFGR |= RCC_PLLCFGR_PLLN_7;
 		
 	// reset/configure PLLP to 4				PLLP[1:0] = RCC_CFGR[17:16]
-	RCC->PLLCFGR |= RCC_PLLCFGR_PLLP_0;		//	= (0x1UL << RCC_PLLCFGR_PLLP_Pos)      /*!< 0x00010000 */
-	RCC->PLLCFGR &= ~RCC_PLLCFGR_PLLP;
+	RCC->PLLCFGR &= ~RCC_PLLCFGR_PLLP;		//	= (0x1UL << RCC_PLLCFGR_PLLP_Pos)      /*!< 0x00010000 */
+	RCC->PLLCFGR |= RCC_PLLCFGR_PLLP_0;
 	
     // Turn the PLL on and wait for it to be ready.
     RCC->CR |= (RCC_CR_PLLON);
@@ -97,10 +117,10 @@ void clockConfig() {
 	
 		
 		
-	/*	A last-ditch effort to get the application working as desired...
+	// A last-ditch effort to get the application working as desired...
 		
-	// Set APB1 prescalar as 2 (48/2) just to be cautious.
-	// APB1 bus runs at max 54MHz:
+	// Set APB1 prescalar as 2, resulting in (48/2) = 24 MHz
+	// Just to be cautious, because APB1 bus runs at max 54MHz:
 	// "The software has to set these bits correctly not to exceed 54 MHz on this domain."
 	// PPRE1[2:0] lives in RCC_CFGR[12:10]
 	// Set these as 100, resulting in AHB clock divided by 2
@@ -121,9 +141,10 @@ void clockConfig() {
 void TIM2_IRQHandler(void) {
 	// Handle a timer 'update' interrupt event
 	if (TIM2->SR & TIM_SR_UIF) {
-		TIM2->SR &= ~(TIM_SR_UIF);
 		// Toggle the LED output pin.
 		GPIOB->ODR ^= (1 << LED1_PIN);
+		// Reset the Update Interrupt Flag (UIF)
+		TIM2->SR &= ~(TIM_SR_UIF);
 	}
 }
 

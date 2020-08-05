@@ -1,4 +1,3 @@
-#include "stm32f746xx.h"
 #include "GPIO.h"
 
 void RCC_GPIOB() {
