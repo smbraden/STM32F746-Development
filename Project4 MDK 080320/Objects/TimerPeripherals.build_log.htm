@@ -28,12 +28,12 @@ Project File Date:  08/04/2020
 *** Using Compiler 'V6.14', folder: 'C:\Keil_v5\ARM\ARMCLANG\Bin'
 Build target 'Target 1'
 main.c(23): warning: no previous extern declaration for non-static variable 'timer_ms' [-Wmissing-variable-declarations]
-uint16_t timer_ms = 1000;                       // timer milliseconds
+uint16_t timer_ms = 1500;                       // timer milliseconds
          ^
 main.c(23): note: declare 'static' if the variable is not intended to be used outside of this translation unit
-uint16_t timer_ms = 1000;                       // timer milliseconds
+uint16_t timer_ms = 1500;                       // timer milliseconds
 ^
-main.c(91): warning: implicit conversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 48000000 to 0 [-Wconstant-conversion]
+main.c(96): warning: implicit conversion from 'int' to 'uint8_t' (aka 'unsigned char') changes value from 48000000 to 0 [-Wconstant-conversion]
     core_clock_hz = 48000000;
                   ~ ^~~~~~~~
 main.c(22): warning: no previous extern declaration for non-static variable 'core_clock_hz' [-Wmissing-variable-declarations]
@@ -45,7 +45,7 @@ volatile uint8_t core_clock_hz;
 3 warnings generated.
 compiling main.c...
 linking...
-Program Size: Code=940 RO-data=488 RW-data=4 ZI-data=1640  
+Program Size: Code=972 RO-data=488 RW-data=4 ZI-data=1640  
 ".\Objects\TimerPeripherals.axf" - 0 Error(s), 3 Warning(s).
 
 <h2>Software Packages used:</h2>
