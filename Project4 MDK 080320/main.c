@@ -19,7 +19,7 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 
 // Global variables
-volatile uint8_t core_clock_hz;
+volatile uint32_t core_clock_hz;
 uint16_t timer_ms = 1000;			// timer milliseconds
 
 // Function prototypes
@@ -50,7 +50,7 @@ int main(void) {
 	GPIOB->ODR |= (1 << LED2_PIN);
 	
 	// Enable the NVIC interrupt for TIM2.
-	NVIC_SetPriority(TIM2_IRQn, 0x0);
+	NVIC_SetPriority(TIM2_IRQn, 0x03);
 	NVIC_EnableIRQ(TIM2_IRQn);
 
 	// Start the timer.
@@ -85,7 +85,7 @@ void clockConfig() {
 	// SYSCLK will be derived from PLLCLK
 	// HSI = 16MHz is the clock source at bootup
 	// Configure the PLL to (HSI / PLLM) * PLLN / PLLP = 48 MHz.
-	//						(16 / 16) * 192 / 4 = 48 MHz
+	// (16 / 16) * 192 / 4 = 48 MHz
     
 	// Keep the PLL off while configuraing M, N, P
     RCC->CR &= ~(RCC_CR_PLLON);
@@ -116,16 +116,12 @@ void clockConfig() {
     core_clock_hz = 48000000;
 	
 		
-		
-	// A last-ditch effort to get the application working as desired...
-		
-	// Set APB1 prescalar as 2, resulting in (48/2) = 24 MHz
-	// Just to be cautious, because APB1 bus runs at max 54MHz:
-	// "The software has to set these bits correctly not to exceed 54 MHz on this domain."
+	// Set APB1 prescalar to 2, resulting in (48/2) = 24 MHz
+	// APB1 bus runs at max 42MHz.
 	// PPRE1[2:0] lives in RCC_CFGR[12:10]
 	// Set these as 100, resulting in AHB clock divided by 2
 	RCC->CFGR &= RCC_CFGR_PPRE1;
-	RCC->CFGR |= RCC_CFGR_PPRE1_2;			//	(0x4UL << RCC_CFGR_PPRE1_Pos)        /*!< 0x00001000 */
+	RCC->CFGR |= RCC_CFGR_PPRE1_2;			//	(0x4UL << RCC_CFGR_PPRE1_Pos)      = 0x00001000
 	
 	
 	/*	0xx: AHB clock not divided

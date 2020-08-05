@@ -3,4 +3,4 @@
 
 #include "stm32f746xx.h"
 
-void initLine(uint8_t, IRQn_Type);
+void initButtonLine(uint8_t, IRQn_Type);

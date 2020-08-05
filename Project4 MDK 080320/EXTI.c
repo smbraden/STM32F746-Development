@@ -4,7 +4,7 @@
 
 // ex: initLine(BUTTON_B9, EXTI4_IRQn)
 // ex: initLine(BUTTON_B9, EXTI9_5IRQn)
-void initLine(uint8_t BUTTON_PIN, IRQn_Type IRQn_var) {
+void initButtonLine(uint8_t BUTTON_PIN, IRQn_Type IRQn_var) {
 	
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 	
