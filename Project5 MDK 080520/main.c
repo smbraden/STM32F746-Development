@@ -80,21 +80,25 @@ int main(void) {
 	// main event loop
 	while (1) {
 		
-		// Testing the timer off macro and prescalar reseting
-		if (Cycles == 8 && timer2_ms == 500) {
+		// Testing the timer off macro and reseting of auto-reload
+		if (Cycles == 8 && timer2_ms == 300) {
 			
 			stopGPT(TIM3);
 			Cycles = 0;
 			timer2_ms = 1000;
 			
-			initGPT(TIM3, timer2_ms, core_clock_hz);
+			// number of cycles to count
+			TIM3->ARR = timer2_ms;
+			startGPT(TIM3);
 		}
 		else if (Cycles == 8)	{
 			stopGPT(TIM3);
 			Cycles = 0;
-			timer2_ms = 500;
+			timer2_ms = 300;
 			
-			initGPT(TIM3, timer2_ms, core_clock_hz);
+			// number of cycles to count
+			TIM3->ARR = timer2_ms;
+			startGPT(TIM3);
 		}
 			
 	}
