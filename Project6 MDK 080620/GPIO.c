@@ -20,5 +20,3 @@ void configButton(uint8_t BUTTON_PIN, GPIO_TypeDef* GPIOx) {
 	
 }
 
-
-

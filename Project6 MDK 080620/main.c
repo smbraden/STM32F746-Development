@@ -25,7 +25,7 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 // Global variables
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
-uint32_t analogData = 0;
+volatile uint32_t analogData = 0;
 
 
 // Function prototypes
@@ -51,8 +51,15 @@ int main(void) {
 	
 	// enablePeriphClock(AHB2ENR, RCC_APB2ENR_ADC1EN)
 	RCC->AHB2ENR |= RCC_APB2ENR_ADC1EN;
-	//RCC->CCIPR   &= ~( RCC_CCIPR_ADCSEL );
-	//RCC->CCIPR   |=  ( 3 << RCC_CCIPR_ADCSEL_Pos );
+	
+	
+	// set pin to analog mode with push pull resistors
+	GPIOA->OTYPER &= ~(0x1UL << ADC_PIN);
+	GPIOA->PUPDR &= ~(0x3UL << (ADC_PIN * 2));
+	GPIOA->OSPEEDR &= ~(0x3UL << (ADC_PIN * 2));
+	GPIOA->MODER &= ~(0x3UL << (ADC_PIN * 2));
+	GPIOA->MODER |=  (0x3UL << (ADC_PIN * 2));
+	
 	
 	// enable End of Conversion interrupt in NVIC
 	ADC1->CR1 |= ADC_CR1_EOCIE;
@@ -84,6 +91,8 @@ int main(void) {
 	// main event loop
 	while (1) {
 		uint8_t bars = analogData/512;		// (2^12)/8 = 512
+		
+		// light up x out of 8 "bars"
 		for (uint8_t i = 0 ; i <= bars ; i++) { 
 			GPIOE->ODR |= (1 << i);
 		}
