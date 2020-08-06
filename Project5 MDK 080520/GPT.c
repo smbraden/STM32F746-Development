@@ -1,67 +1,8 @@
-/*
-Description:	Basic implementation of timer peripherals in the STM32F7 board.
-	
-Author:			Sonja Braden
-
-Reference:		https://vivonomicon.com/2018/05/20/bare-metal-stm32-programming-part-5-timer-peripherals-and-the-system-clock/
-	
-IDE:			Keil uVision 5
-
-uVision 
-Dependencies:	CMSIS Core, STM32F746xx Startup files
-*/
-
+// A set of functions implementing the General Purpose Timer peripherals on the STM32F746
 #include "stm32f746xx.h"
-#include "GPIO.h"
 #include "GPT.h"
-#include "pinDefines.h"
 
-
-// Global variables
-volatile uint32_t core_clock_hz;
-uint16_t timer_ms = 1000;			// timer milliseconds
-
-// Function prototypes
-void clockConfig(void);
-void TIM2_IRQHandler(void);
-
-
-int main(void) {
-	
-	
-	// Configure the clock for PLL at 48 MHz
-	clockConfig();
-	
-	// Enable the timer 2 peripheral
-	enableGPT(TIM2);
-	
-	// Enable the TIM2 clock.
-	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
-	
-	// enable clock for GPIOB port
-	RCC_GPIOB();
-	
-	// Set LED pin to push-pull low-speed output.
-	initLED(LED1_PIN, GPIOB);
-	initLED(LED2_PIN, GPIOB);
-	
-	// Test timer-independent GPIO
-	GPIOB->ODR |= (1 << LED2_PIN);
-	
-	// Enable the NVIC interrupt for TIM2.
-	NVIC_SetPriority(TIM2_IRQn, 0x03);
-	NVIC_EnableIRQ(TIM2_IRQn);
-
-	// Start the timer.
-	initGPT(TIM2, timer_ms, core_clock_hz);
-	
-	// main event loop
-	while (1) {
-		
-	}
-}
-
-
+// For configuring the system clock to 48MHz to PLL as source
 void clockConfig() {
 	
 	// set the Flash Latency to 1 wait state in order to access Flash memory at 48 MHz
@@ -112,7 +53,7 @@ void clockConfig() {
 	while (!(RCC->CFGR & RCC_CFGR_SWS_PLL)) {}
     
 	// Set the global clock speed variable.
-    core_clock_hz = 48000000;
+    //core_clock_hz = 48000000;
 	
 	 
 /*	APB1 bus runs at max 54MHz.	Reference Manual, pg 149: 
@@ -137,14 +78,71 @@ void clockConfig() {
 }
 
 
-void TIM2_IRQHandler(void) {
-	// Handle a timer 'update' interrupt event
-	if (TIM2->SR & TIM_SR_UIF) {
-		// Toggle the LED output pin.
-		GPIOB->ODR ^= (1 << LED1_PIN);
-		// Reset the Update Interrupt Flag (UIF)
-		TIM2->SR &= ~(TIM_SR_UIF);
+
+void enableGPT(TIM_TypeDef* TIMx) {
+	
+	// Enable the clock for the General Purpose TIMx 
+	if (TIMx == TIM2) {
+		RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+	}
+	else if (TIMx == TIM3) {
+		RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	}
+	else if (TIMx == TIM4) {
+		RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
+	}
+	else if (TIMx == TIM5) {
+		RCC->APB1ENR |= RCC_APB1ENR_TIM5EN;
 	}
 }
+
+
+
+// GPT = "General Purpose Timer" 
+// For STM32F746, these include TIM2, TIM3, TIM4, TIM5
+void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t coreClock_hz) {
+	
+	// Timer's counter off
+	TIMx->CR1 &= ~(TIM_CR1_CEN);
+
+	// Reset the peripheral
+	if (TIMx == TIM2) {
+		RCC->APB1RSTR |=  (RCC_APB1RSTR_TIM2RST);
+		RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM2RST);
+	}
+	else if (TIMx == TIM3) {
+		RCC->APB1RSTR |= (RCC_APB1RSTR_TIM3RST);
+		RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM3RST);
+	}
+	else if (TIMx == TIM4) {
+		RCC->APB2RSTR |=  (RCC_APB1RSTR_TIM4RST);
+		RCC->APB2RSTR &= ~(RCC_APB1RSTR_TIM4RST);
+	}
+	else if (TIMx == TIM5) {
+		RCC->APB2RSTR |=  (RCC_APB1RSTR_TIM5RST);
+		RCC->APB2RSTR &= ~(RCC_APB1RSTR_TIM5RST);
+	}
+	
+
+	// Set the timer prescaler/autoreload timing registers.
+	TIMx->PSC   = coreClock_hz / 1000;
+	TIMx->ARR   = ms;
+	// Send an update event to reset the timer and apply settings.
+	TIMx->EGR  |= TIM_EGR_UG;
+	// Enable the hardware interrupt.
+	TIMx->DIER |= TIM_DIER_UIE;
+	// Enable the timer.
+	TIMx->CR1  |= TIM_CR1_CEN;
+
+}
+
+void stopGPT(TIM_TypeDef* TIMx) {
+	// Turn off the timer.
+	TIMx->CR1 &= ~(TIM_CR1_CEN);
+	// Clear the 'pending update interrupt' flag, just in case.
+	TIMx->SR  &= ~(TIM_SR_UIF);
+}
+
+
 
 
