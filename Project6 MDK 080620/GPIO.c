@@ -1,12 +1,7 @@
 #include "GPIO.h"
 
-void RCC_GPIOB(void) {
-	
-	// Enable the GPIOB peripheral
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
-}
 
-void initLED(uint8_t LED_PIN, GPIO_TypeDef* GPIOx) {
+void configLED(uint8_t LED_PIN, GPIO_TypeDef* GPIOx) {
 	
 	// Set LED pin to push-pull low-speed output.
 	GPIOx->MODER  &= ~(0x3 << (LED_PIN*2));		// input mode (reset state)
@@ -15,7 +10,7 @@ void initLED(uint8_t LED_PIN, GPIO_TypeDef* GPIOx) {
 	GPIOx->PUPDR   &= ~(3 << (LED_PIN*2));		// No pull-up/pull-down resistors
 }
 
-void initButton(uint8_t BUTTON_PIN, GPIO_TypeDef* GPIOx) {
+void configButton(uint8_t BUTTON_PIN, GPIO_TypeDef* GPIOx) {
 
 	//Initialize the GPIOC pins.
 	//PC13 should be set to 'input' mode with pull-up.
@@ -24,3 +19,6 @@ void initButton(uint8_t BUTTON_PIN, GPIO_TypeDef* GPIOx) {
 	GPIOx->PUPDR |= (0x1 << (BUTTON_PIN*2));	// pull-up activated
 	
 }
+
+
+

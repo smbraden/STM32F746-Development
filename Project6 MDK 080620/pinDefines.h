@@ -14,3 +14,4 @@
 #define E8 8
 #define E9 9
 
+#define ADC_PIN 3

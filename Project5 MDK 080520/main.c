@@ -1,7 +1,8 @@
 /*
 Description:	Basic implementation of the Nucleo's General Purpose Timer Peripheral. 
 				8 LED are wired to pins PE2 through PE9. They blink in a successive 
-				pattern down the row.
+				pattern down the row. An onboard user LED also flashes at an alternating 
+				frequency according to a second timer.
 				
 Author:			Sonja Braden
 
@@ -25,10 +26,10 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 // Global variables
 uint32_t core_clock_hz = 48000000;		// clockConfig() will set the Sys clock as such
 uint16_t timer1_ms = 100;				// timer milliseconds
-volatile uint16_t timer2_ms = 1000;
+volatile uint16_t timer2_ms = 1000;		// timer milliseconds
 volatile uint8_t LEDx = 1;				// toggled by timer interupt
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
-volatile uint8_t Cycles = 0;
+volatile uint8_t Cycles = 0;			// for alternating between blink frequencies
 
 
 // Function prototypes

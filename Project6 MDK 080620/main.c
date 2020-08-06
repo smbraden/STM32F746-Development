@@ -24,79 +24,84 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 
 // Global variables
-uint32_t core_clock_hz = 48000000;		// clockConfig() will set the Sys clock as such
-uint16_t timer_ms = 100;				// timer milliseconds
-volatile uint8_t LEDx = 1;				// toggled by timer interupt
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
-
+uint32_t analogData = 0;
 
 
 // Function prototypes
-void clockConfig(void);
-void TIM2_IRQHandler(void);
+void ADC_IRQHandler(void);
+
 
 int main(void) {
 	
-	
-	// Configure the clock for PLL at 48 MHz
-	clockConfig();
-	
-	// Enable the timer 2 peripheral
-	enableGPT(TIM2);
-	
-	// Enable the TIM2 clock.
-	RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
-	
-	// enable clock for GPIOB peripheral
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
-	
-	// For testing ***
-	// RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
+	// enable GPIOE peripheral clock
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOFEN;
 	
 	// Set the wired LED pins to push-pull low-speed output.
-	// For convenience, using pins 2 through 9, inclusive 
 	for (uint8_t PINx = 2; PINx < 10; PINx++) {
-		initLED(PINx, GPIOE);
+		configLED(PINx, GPIOE);
 	}
 	
-	// For testing ***
-	// initLED(LED1_PIN, GPIOB);
+	// Enable clock for ADC
+	/*	f_ADC = ADC clock frequency:
+		VDDA = 1.7V to 2.4V	-----	Max: 18MHz
+		VDDA = 2.4V to 3.6V -----	Max: 36MHz
+		
+		In the clear with 16MHz		*/
 	
-	// Enable the NVIC interrupt for TIM2.
-	NVIC_SetPriority(TIM2_IRQn, 0x03);
-	NVIC_EnableIRQ(TIM2_IRQn);
+	// enablePeriphClock(AHB2ENR, RCC_APB2ENR_ADC1EN)
+	RCC->AHB2ENR |= RCC_APB2ENR_ADC1EN;
+	//RCC->CCIPR   &= ~( RCC_CCIPR_ADCSEL );
+	//RCC->CCIPR   |=  ( 3 << RCC_CCIPR_ADCSEL_Pos );
+	
+	// enable End of Conversion interrupt in NVIC
+	ADC1->CR1 |= ADC_CR1_EOCIE;
+	NVIC_EnableIRQ(ADC_IRQn);
+	
+	
+	// set the sampling rate for channel 10 to 480 cycles
+	ADC1->SMPR1 &= ~ADC_SMPR1_SMP10;
+	ADC1->SMPR1 |= ADC_SMPR1_SMP10;
+	
+	/*
+		000: 3 cycles
+		001: 15 cycles
+		010: 28 cycles
+		011: 56 cycles
+		100: 84 cycles
+		101: 112 cycles
+		110: 144 cycles
+		111: 480 cycles		*/
 
-	// Start the timer.
-	initGPT(TIM2, timer_ms, core_clock_hz);
-	
+	ADC1->SQR1 &= ~ADC_SQR1_L;
+	// Configure the first (and only) step in the sequence to read channel 10
+	ADC1->SQR3 &= ~ADC_SQR3_SQ1;
+	ADC1->SQR3 |= (ADC_SQR3_SQ1_Pos | ADC_SQR3_SQ1_Pos);	//	|= (10 << 0); 
+
+	// enable the ADC and using continuous mode
+	ADC1->CR2 |= (ADC_CR2_ADON | ADC_CR2_CONT);
 	
 	// main event loop
 	while (1) {
-		
-	}
-}
-
-
-
-
-
-void TIM2_IRQHandler(void) {
-	// Handle a timer 'update' interrupt event
-	if (TIM2->SR & TIM_SR_UIF) {
-		if (LEDx == 9)
-			LEDx = 1;
-		else
-			LEDx++;
-		
+		uint8_t bars = analogData/512;		// (2^12)/8 = 512
+		for (uint8_t i = 0 ; i <= bars ; i++) { 
+			GPIOE->ODR |= (1 << i);
+		}
 		GPIOE->ODR &= ~ROW_MASK;
-		GPIOE->ODR |= (1 << LEDx);
-		
-		// For testing ***
-		//GPIOB->ODR |= (1 << LED1_PIN);
-
-		// Reset the Update Interrupt Flag (UIF)
-		TIM2->SR &= ~(TIM_SR_UIF);
 	}
 }
 
 
+void ADC_IRQHandler(void) {
+	
+	if(ADC1->SR & ADC_SR_EOC) {
+		analogData = ADC1->DR;
+	}
+}
+
+/*
+void delay_ms(int time_ms) {
+	msTicks = 0;
+	while(msTicks < time_ms) {}
+}
+*/

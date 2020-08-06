@@ -7,6 +7,6 @@
 #define OutputLow(GPIOx, GPIO_Pin) (GPIOx->ODR &= ~(1 << GPIO_Pin))
 #define OutputToggle(GPIOx, GPIO_Pin) (GPIOx->ODR ^= (1 << GPIO_Pin))
 
-void RCC_GPIOB(void);
+void enableClockGPIOB(void);
 void configLED(uint8_t, GPIO_TypeDef*);
 void configButton(uint8_t, GPIO_TypeDef*);
