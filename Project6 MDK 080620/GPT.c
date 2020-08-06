@@ -1,4 +1,4 @@
-// A set of functions implementing the General Purpose Timer (GPT) peripherals on the STM32F746
+// A set of functions implementing the General Purpose Timer peripherals on the STM32F746
 #include "stm32f746xx.h"
 #include "GPT.h"
 
@@ -79,7 +79,6 @@ void clockConfig() {
 
 
 
-// For STM32F746, general purpose timers include TIM2, TIM3, TIM4, TIM5
 void enableGPT(TIM_TypeDef* TIMx) {
 	
 	// Enable the clock for the General Purpose TIMx 
@@ -99,8 +98,8 @@ void enableGPT(TIM_TypeDef* TIMx) {
 
 
 
-
-// For STM32F746, general purpose timers include TIM2, TIM3, TIM4, TIM5
+// GPT = "General Purpose Timer" 
+// For STM32F746, these include TIM2, TIM3, TIM4, TIM5
 void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t coreClock_hz) {
 	
 	// Timer's counter off
@@ -126,10 +125,7 @@ void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t coreClock_hz) {
 	
 
 	// Set the timer prescaler/autoreload timing registers.
-	// can divide the counter clock frequency by any factor between 1 and 65536
-	// These are 16-bit timers, so coreClock_hz must be less than 65MHz.
-	TIMx->PSC   = coreClock_hz / 1000;			// SYSCLK / PSC = timer freq ... ex: 48MHz/(48M/1000) = 1kHz
-	// number of cycles to count
+	TIMx->PSC   = coreClock_hz / 1000;
 	TIMx->ARR   = ms;
 	// Send an update event to reset the timer and apply settings.
 	TIMx->EGR  |= TIM_EGR_UG;
@@ -137,9 +133,15 @@ void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t coreClock_hz) {
 	TIMx->DIER |= TIM_DIER_UIE;
 	// Enable the timer.
 	TIMx->CR1  |= TIM_CR1_CEN;
+
 }
 
-
+void stopGPT(TIM_TypeDef* TIMx) {
+	// Turn off the timer.
+	TIMx->CR1 &= ~(TIM_CR1_CEN);
+	// Clear the 'pending update interrupt' flag, just in case.
+	TIMx->SR  &= ~(TIM_SR_UIF);
+}
 
 
 

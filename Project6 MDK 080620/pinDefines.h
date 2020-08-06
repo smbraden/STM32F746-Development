@@ -5,8 +5,6 @@
 #define LED2_PIN 7
 #define LED3_PIN 14
 
-
-// LED bank
 #define E2 2
 #define E3 3
 #define E4 4
