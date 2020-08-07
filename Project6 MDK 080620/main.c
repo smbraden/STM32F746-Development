@@ -1,12 +1,9 @@
 /*
-Description:	Basic implementation of the Nucleo's Analog to Digital Converter functionallity
+Description:	Basic implementation of the Nucleo's Analog to Digital Converter
 				An LED display wired to the E port will be utilized 
-				to display the relative magnitude of the varying voltage input
-				as produced by a photoresistor
+				to represent the voltage across a photoresistor relative to the supply (3.3V)
 				
 Author:			Sonja Braden
-
-Reference:		
 	
 IDE:			Keil uVision 5
 
@@ -35,30 +32,35 @@ void ADC_IRQHandler(void);
 int main(void) {
 	
 	// enable GPIOE peripheral clock
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOFEN;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
+	// enable GPIOB peripheral clock
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
 	
 	// Set the wired LED pins to push-pull low-speed output.
 	for (uint8_t PINx = 2; PINx < 10; PINx++) {
 		configLED(PINx, GPIOE);
 	}
+	// set the onboard LED likewise
+	configLED(LED1_PIN, GPIOB);
+	configLED(LED2_PIN, GPIOB);
 	
 	// Enable clock for ADC
 	/*	f_ADC = ADC clock frequency:
 		VDDA = 1.7V to 2.4V	-----	Max: 18MHz
 		VDDA = 2.4V to 3.6V -----	Max: 36MHz
 		
-		In the clear with 16MHz		*/
+		In the clear with default 16MHz	*/
 	
-	// enablePeriphClock(AHB2ENR, RCC_APB2ENR_ADC1EN)
+	// enable peripheral clock
 	RCC->AHB2ENR |= RCC_APB2ENR_ADC1EN;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
 	
-	
-	// set pin to analog mode with push pull resistors
+	// set pin to analog mode
 	GPIOA->OTYPER &= ~(0x1UL << ADC_PIN);
 	GPIOA->PUPDR &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->OSPEEDR &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->MODER &= ~(0x3UL << (ADC_PIN * 2));
-	GPIOA->MODER |=  (0x3UL << (ADC_PIN * 2));
+	GPIOA->MODER |= (0x3UL << (ADC_PIN * 2));
 	
 	
 	// enable End of Conversion interrupt in NVIC
@@ -83,20 +85,35 @@ int main(void) {
 	ADC1->SQR1 &= ~ADC_SQR1_L;
 	// Configure the first (and only) step in the sequence to read channel 10
 	ADC1->SQR3 &= ~ADC_SQR3_SQ1;
-	ADC1->SQR3 |= (ADC_SQR3_SQ1_Pos | ADC_SQR3_SQ1_Pos);	//	|= (10 << 0); 
+	ADC1->SQR3 |= (10 >> ADC_SQR3_SQ1_Pos);	// (ADC_SQR3_SQ1_3 | ADC_SQR3_SQ1_1);	|= (10 << 0); 
 
 	// enable the ADC and using continuous mode
 	ADC1->CR2 |= (ADC_CR2_ADON | ADC_CR2_CONT);
 	
+	// For single conversion mode, where the ADC does one conversion
+	// The conversion starts when either the SWSTART or the JSWSTART bit is set.
+	// ADC1->CR2 |= ADC_CR2_SWSTART;
+	
+	
+	// Test GPIOB
+	GPIOB->ODR |= (0x1UL << LED2_PIN);
 	// main event loop
 	while (1) {
-		uint8_t bars = analogData/512;		// (2^12)/8 = 512
+		uint32_t bars = analogData/512;		// (2^12)/8 = 512
 		
-		// light up x out of 8 "bars"
+		// light up x out of 8 "bars", which represent
+		// voltage across photoresistor relative to Vcc
 		for (uint8_t i = 0 ; i <= bars ; i++) { 
 			GPIOE->ODR |= (1 << i);
 		}
 		GPIOE->ODR &= ~ROW_MASK;
+		
+		if (analogData > 0) {
+			GPIOE->ODR |= (0x1UL << LED1_PIN);
+		}
+		else {
+			GPIOE->ODR &= ~(0x1UL << LED1_PIN);
+		}
 	}
 }
 
