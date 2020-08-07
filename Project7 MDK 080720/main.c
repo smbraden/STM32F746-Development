@@ -35,9 +35,6 @@ uint32_t SystemCoreClock = 16000000;	// 16 MHz
 static volatile char recieved;
 
 // Function prototypes
-void enableClockUART(uint8_t);	// USART_TypeDef*
-void enableClockUSART(uint8_t);	// USART_TypeDef*
-void printUART(char *msg, ...);
 void UART4_IRQnHandler(void);
 
 int main(void) {
@@ -48,18 +45,20 @@ int main(void) {
 	// clock enable GPIO
 	RCC->AHB1ENR &= ~RCC_AHB1ENR_GPIOCEN;	// using PC10 and PC11
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-
+	// [For some other STM32's, alternate function clock enable here]
+		
 	// configure pins PC10 and PC11 for UART4
-	GPIOC->MODER &= ~((0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11))); 
-	GPIOC->MODER |= (0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11));
-	GPIOC->OTYPER &= ~((0x1UL << (2 * PC10)) | (0x1UL << (2 * PC11)));
-	GPIOC->OSPEEDR &= ~((0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11)));
-	GPIOC->OSPEEDR |= (0x2UL << (2 * PC10)) | (0x2UL << (2 * PC11));
+	GPIOC->MODER &= ~((0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11))); 	// Reset
+	GPIOC->MODER |= (0x2UL << (2 * PC10)) | (0x2UL << (2 * PC11));		// Alternate Function mode
+	GPIOC->OTYPER &= ~((0x1UL << PC10) | (0x1UL << PC11));				// Output push-pull (reset state)
+	GPIOC->OSPEEDR &= ~((0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11)));	// Reset
+	GPIOC->OSPEEDR |= (0x2UL << (2 * PC10)) | (0x2UL << (2 * PC11));	// High speed
 
-    GPIOA->AFR[0] &= ~((0xFUL << (2 * PC10)));
-    GPIOA->AFR[0] |=  ((0x7UL << (2 * PC10)));
-    GPIOA->AFR[1] &= ~((0xFUL << ((PC11 - 8) * 4)));
-    GPIOA->AFR[1] |=  ((0x3UL << ((PC11 - 8) * 4)));
+	// GPIO alternate function configuration
+    GPIOC->AFR[0] &= ~((0xFUL << (2 * PC10)));
+    GPIOC->AFR[0] |=  ((0x7UL << (2 * PC10)));
+    GPIOC->AFR[1] &= ~((0xFUL << ((PC11 - 8) * 4)));
+    GPIOC->AFR[1] |=  ((0x3UL << ((PC11 - 8) * 4)));
 
 	// set the baud rate to 9600
 	uint32_t uartdiv = SystemCoreClock / 9600;
@@ -70,6 +69,12 @@ int main(void) {
 	UART4->CR1 |= (USART_CR1_RE | USART_CR1_TE 
 					| USART_CR1_UE | USART_CR1_RXNEIE );
 
+	// set USART word length to 8
+	UART4->CR1 &= ~USART_CR1_M;
+
+	// Enable the USART peripheral: UE, TE, RE bits 
+	UART4->CR1 |= ( USART_CR1_RE | USART_CR1_TE | USART_CR1_UE );
+
 
 }
 
@@ -77,93 +82,10 @@ int main(void) {
 void UART4_IRQnHandler(void) {
 
     // 'Receive register not empty' interrupt.
-    if (UART4->ISR & USART_ISR_RXNE) {
+    if (UART4->ISR & USART_ISR_RXNE) {	// RXNE bit set by hardware when the content of the RDR shift register has been transferred to the USART_RDR register
       // Copy new data into the buffer.
       recieved = UART4->RDR;
     }
 }
 
 
-static void printUART(char *msg, ...) {
-	
-}
-
-
-
-
-
-
-void enableClockUSART(uint8_t USARTx) {	//USART_TypeDef* USARTx
-
-	switch(USARTx) {
-		case 1:	// clock enable lives in APB2ENR
-			RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN;
-			RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
-		break;
-		case 6:
-			RCC->APB2ENR &= ~RCC_APB2ENR_USART6EN;
-			RCC->APB2ENR |= RCC_APB2ENR_USART6EN;
-		break;
-		case 2:	// clock enable lives in APB1ENR
-			RCC->APB1ENR &= ~RCC_APB1ENR_USART2EN;
-			RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
-		break;
-		case 3:
-			RCC->APB1ENR &= ~RCC_APB1ENR_USART3EN;
-			RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
-	}
-}
-	
-void enableClockUART(uint8_t USARTx) {	//USART_TypeDef* USARTx
-
-	switch(USARTx) {
-		case 1:	// clock enable lives in APB2ENR:
-			RCC->APB2ENR &= ~RCC_APB2ENR_USART1EN;
-			RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
-		break;
-		case 6:
-			RCC->APB2ENR &= ~RCC_APB2ENR_USART6EN;
-			RCC->APB2ENR |= RCC_APB2ENR_USART6EN;
-		break;
-		case 2:	// clock enable lives in APB1ENR:
-			RCC->APB1ENR &= ~RCC_APB1ENR_USART2EN;
-			RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
-		break;
-		case 3:
-			RCC->APB1ENR &= ~RCC_APB1ENR_USART3EN;
-			RCC->APB1ENR |= RCC_APB1ENR_USART3EN;
-		break;
-		case 4:		// UART only:
-			RCC->APB1ENR &= ~RCC_APB1ENR_UART4EN;
-			RCC->APB1ENR |= RCC_APB1ENR_UART4EN;
-		break;
-		case 5:
-			RCC->APB1ENR &= ~RCC_APB1ENR_UART5EN;
-			RCC->APB1ENR |= RCC_APB1ENR_UART5EN;
-		break;
-		case 7:
-			RCC->APB1ENR &= ~RCC_APB1ENR_UART7EN;
-			RCC->APB1ENR |= RCC_APB1ENR_UART7EN;
-		break;
-		case 8:
-			RCC->APB1ENR &= ~RCC_APB1ENR_UART8EN;
-			RCC->APB1ENR |= RCC_APB1ENR_UART8EN;
-	}
-}
-
-
-// The word length can be selected as being either 7 or 8 or 9 bits
-// by programming the M[1:0] bits in the USART_CR1 register 
-	
-	/*
-		7-bit character length: M[1:0] = 10
-		8-bit character length: M[1:0] = 00
-		9-bit character length: M[1:0] = 01		*/
-
-
-/*
-void delay_ms(int time_ms) {
-	msTicks = 0;
-	while(msTicks < time_ms) {}
-}
-*/
