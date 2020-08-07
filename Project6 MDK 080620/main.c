@@ -31,6 +31,17 @@ void ADC_IRQHandler(void);
 
 int main(void) {
 	
+	/*	f_ADC = ADC clock frequency:
+		VDDA = 1.7V to 2.4V	-----	Max: 18MHz
+		VDDA = 2.4V to 3.6V -----	Max: 36MHz
+		
+		In the clear with default 16MHz	*/
+	
+	// As a precaution, set prescalar to halve the ADCCLK,
+	// generated from the APB2 clock
+	RCC->CFGR &= ~RCC_CFGR_PPRE2;
+	RCC->CFGR |= RCC_CFGR_PPRE2_2;
+	
 	// enable GPIOE peripheral clock
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
 	// enable GPIOB peripheral clock
@@ -44,12 +55,6 @@ int main(void) {
 	configLED(LED1_PIN, GPIOB);
 	configLED(LED2_PIN, GPIOB);
 	
-	// Enable clock for ADC
-	/*	f_ADC = ADC clock frequency:
-		VDDA = 1.7V to 2.4V	-----	Max: 18MHz
-		VDDA = 2.4V to 3.6V -----	Max: 36MHz
-		
-		In the clear with default 16MHz	*/
 	
 	// enable peripheral clock
 	RCC->AHB2ENR |= RCC_APB2ENR_ADC1EN;
@@ -92,27 +97,30 @@ int main(void) {
 	
 	// For single conversion mode, where the ADC does one conversion
 	// The conversion starts when either the SWSTART or the JSWSTART bit is set.
-	// ADC1->CR2 |= ADC_CR2_SWSTART;
+	ADC1->CR2 |= ADC_CR2_SWSTART;
 	
 	
 	// Test GPIOB
 	GPIOB->ODR |= (0x1UL << LED2_PIN);
 	// main event loop
 	while (1) {
-		uint32_t bars = analogData/512;		// (2^12)/8 = 512
+		uint32_t voltBars = analogData/512;		// 12-bit analog data, 8 LEDs
+											// (2^12)/8 = 512	
 		
 		// light up x out of 8 "bars", which represent
 		// voltage across photoresistor relative to Vcc
-		for (uint8_t i = 0 ; i <= bars ; i++) { 
+		for (uint8_t i = 0 ; i <= voltBars ; i++) { 
 			GPIOE->ODR |= (1 << i);
 		}
 		GPIOE->ODR &= ~ROW_MASK;
 		
+		// For debugging:
+		// on-board LED1 should turn on if recieving analog data
 		if (analogData > 0) {
-			GPIOE->ODR |= (0x1UL << LED1_PIN);
+			GPIOB->ODR |= (0x1UL << LED1_PIN);
 		}
 		else {
-			GPIOE->ODR &= ~(0x1UL << LED1_PIN);
+			GPIOB->ODR &= ~(0x1UL << LED1_PIN);
 		}
 	}
 }
