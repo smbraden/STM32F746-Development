@@ -4,7 +4,10 @@ Description:	Basic implementation of the Nucleo's Analog to Digital Converter
 				to represent the voltage across a photoresistor relative to the supply (3.3V)
 				
 Author:			Sonja Braden
-	
+
+References:		https://github.com/WRansohoff/STM32_UART_Examples/blob/master/receive_irq/src/main.c
+				https://www.youtube.com/watch?v=nieOpDR7kBs&list=PLmY3zqJJdVeNIZ8z_yw7Db9ej3FVG0iLy&index=10&t=489s
+
 IDE:			Keil uVision 5
 
 uVision 
@@ -55,10 +58,10 @@ int main(void) {
 	GPIOC->OSPEEDR |= (0x2UL << (2 * PC10)) | (0x2UL << (2 * PC11));	// High speed
 
 	// GPIO alternate function configuration
-    GPIOC->AFR[0] &= ~((0xFUL << (2 * PC10)));
-    GPIOC->AFR[0] |=  ((0x7UL << (2 * PC10)));
-    GPIOC->AFR[1] &= ~((0xFUL << ((PC11 - 8) * 4)));
-    GPIOC->AFR[1] |=  ((0x3UL << ((PC11 - 8) * 4)));
+    GPIOC->AFR[1] &= ~GPIO_AFRH_AFRH2;		// AF8 for UART4_RX & UART4_TX 
+    GPIOC->AFR[1] |=  GPIO_AFRH_AFRH1_3;	// bits to configure alternate function I/Os: AF8 = 1000
+    GPIOC->AFR[1] &= ~GPIO_AFRH_AFRH2;
+    GPIOC->AFR[1] |=  GPIO_AFRH_AFRH1_3;
 
 	// set the baud rate to 9600
 	uint32_t uartdiv = SystemCoreClock / 9600;
