@@ -8,7 +8,9 @@
 *.uvgui
 *.uvgui.*
 *.uvguix.*
+
 *.scvd
+*.uvopojx
 
 # Listing files
 *.cod
