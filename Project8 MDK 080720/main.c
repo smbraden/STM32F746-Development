@@ -17,50 +17,64 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 // Macro defines
 
+// Type defines
+typedef enum {
+	msec = 1000,
+	usec = 1000000,
+} order;
+
+
 // Global variables
-volatile uint32_t msTicks = 0;			// store millisecond ticks
-volatile uint32_t time_ms = 1000;
+static volatile uint32_t msTicks = 0;			// store millisecond ticks
+
 
 // Function prototypes
 void SysTick_Handler(void);
-void initSysTick(void);
-void delay_ms(void);
+void initSysTick(order);
+void delay(uint32_t);
+ 
 
 int main(void) {
 	
 	// enable GPIOB peripheral clock
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
 	
-	// set the onboard LED likewise
-	configLED(LED1_PIN, GPIOB);
+	// configure the GPIO
 	configLED(LED2_PIN, GPIOB);
-
-	initSysTick();
+	configLED(LED1_PIN, GPIOB);
+	
+	initSysTick(msec);
 
 	while (1) {
 		
 		// just test the new delay function
-		GPIOB->ODR |= (0x1UL << LED2_PIN);
-		delay_ms();
-		
+		GPIOB->ODR ^= (0x1UL << LED2_PIN);
+		delay(1000);			
 	}
 }
 
 
+
+
 void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
-	msTicks = (msTicks == time_ms)? 0 : (msTicks + 1); 
+	msTicks++;
 }
 
-void initSysTick(void) {
+void initSysTick(order Divisor) {
 	
-	uint32_t returnStatus;
-	returnStatus = SysTick_Config(SystemCoreClock / 1000);	// Configure SysTick to generate an interrupt every millisecond */
+	// Configure SysTick to generate 1ms interrupts
+	uint32_t returnStatus = SysTick_Config(SystemCoreClock / Divisor);	
 
-	//if (returnStatus != 0)  {Error Handling}   // Check return code for errors 
+	// Check return code for errors
+	if (returnStatus != 0)  {   
+		GPIOB->ODR ^= (0x1UL << LED1_PIN); 
+	}							
 }
 
-void delay_ms(void) {
+void delay(uint32_t delayTime) {
 	
-	while (msTicks <= time_ms) {}
-	msTicks = 0;
+	uint32_t curTicks;
+	curTicks = msTicks;
+	while ((msTicks - curTicks) < delayTime) {}
 }
+
