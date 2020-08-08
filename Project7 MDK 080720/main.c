@@ -5,7 +5,7 @@ Description:	Basic implementation of the Nucleo's Analog to Digital Converter
 				
 Author:			Sonja Braden
 
-References:		https://github.com/WRansohoff/STM32_UART_Examples/blob/master/receive_irq/src/main.c
+References:		https://github.com/WRansohoff/STM32_UART_Examples/tree/master/receive_irq
 				https://www.youtube.com/watch?v=nieOpDR7kBs&list=PLmY3zqJJdVeNIZ8z_yw7Db9ej3FVG0iLy&index=10&t=489s
 
 IDE:			Keil uVision 5
@@ -34,11 +34,16 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #define PC11 11
 
 // Global variables
-uint32_t SystemCoreClock = 16000000;	// 16 MHz
+// uint32_t SystemCoreClock = 16000000;	// 16 MHz
 static volatile char recieved;
+volatile uint32_t msTicks = 0;		// store millisecond ticks
+
 
 // Function prototypes
 void UART4_IRQnHandler(void);
+static void print(char* msg, int length);
+void SysTick_Handler(void);
+void initSysTick(void);
 
 int main(void) {
 	
@@ -63,23 +68,61 @@ int main(void) {
     GPIOC->AFR[1] &= ~GPIO_AFRH_AFRH2;
     GPIOC->AFR[1] |=  GPIO_AFRH_AFRH1_3;
 
-	// set the baud rate to 9600
+	// set the baud rate to 9600... see pg 1040 of Ref Manual
 	uint32_t uartdiv = SystemCoreClock / 9600;
+	
 	UART4->BRR = (((uartdiv / 16) << USART_BRR_DIV_MANTISSA_Pos) 
 				| ((uartdiv % 16) << USART_BRR_DIV_FRACTION_Pos));
+	// UART4->BRR = uartdiv;
 
-	// Enable the USART peripheral with RX and RX timeout interrupts.
+	// Enable the USART peripheral with RX and TX timeout interrupts.
 	UART4->CR1 |= (USART_CR1_RE | USART_CR1_TE 
-					| USART_CR1_UE | USART_CR1_RXNEIE );
+				 | USART_CR1_UE | USART_CR1_RXNEIE );
 
 	// set USART word length to 8
 	UART4->CR1 &= ~USART_CR1_M;
 
 	// Enable the USART peripheral: UE, TE, RE bits 
-	UART4->CR1 |= ( USART_CR1_RE | USART_CR1_TE | USART_CR1_UE );
+	UART4->CR1 |= (USART_CR1_RE | USART_CR1_TE | USART_CR1_UE );
 
+	
+	char string[] = "Hello World!\n";
+	int strLen = strlen(string);
+	
+	initSysTick();
+	while(1) {
+		
+		print(string, strLen);
+		while(msTicks != 0){}
+	}
 
 }
+
+static void print(char* msg, int length) {
+	
+	for(int i = 0; i < length; i++) {
+		UART4->RDR = msg[i];					// RDR is 8-bit (ASCII)
+		while(!(UART4->ISR & USART_ISR_TXE)){}
+	}
+}
+
+
+/*
+
+static void print(const char* msg, ...) {
+	
+	char buffer[80];
+	va_list args;
+	va_start(args, msg);
+	vsprintf(buffer, msg, args);
+	
+	for(int i = 0; i < strlen(buffer); i++) {
+		UART4->RDR = buffer[i];					// RDR is 8-bit (ASCII)
+		while(!(UART4->ISR & USART_ISR_TXE)){}
+	}
+}
+
+*/
 
 // USART4 interrupt handler
 void UART4_IRQnHandler(void) {
@@ -89,6 +132,19 @@ void UART4_IRQnHandler(void) {
       // Copy new data into the buffer.
       recieved = UART4->RDR;
     }
+}
+
+  
+void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
+	msTicks = (msTicks < 1000)? (msTicks + 1) : 0;
+}
+
+void initSysTick(void) {
+	
+	uint32_t returnStatus;
+	returnStatus = SysTick_Config(SystemCoreClock / 1000);	// Configure SysTick to generate an interrupt every millisecond */
+
+	//if (returnStatus != 0)  {Error Handling}   // Check return code for errors 
 }
 
 

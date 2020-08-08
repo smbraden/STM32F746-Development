@@ -23,6 +23,7 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 // Global variables
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
 volatile uint32_t analogData = 0;
+volatile uint32_t msTicks = 0;			// store millisecond ticks
 
 
 // Function prototypes
@@ -67,6 +68,9 @@ int main(void) {
 	GPIOA->MODER &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->MODER |= (0x3UL << (ADC_PIN * 2));
 	
+	// ADC's are "Additional functions," not "Alternate functions"
+	// Functions directly selected/enabled through peripheral registers
+	
 	
 	// enable End of Conversion interrupt in NVIC
 	ADC1->CR1 |= ADC_CR1_EOCIE;
@@ -97,7 +101,7 @@ int main(void) {
 	
 	// For single conversion mode, where the ADC does one conversion
 	// The conversion starts when either the SWSTART or the JSWSTART bit is set.
-	ADC1->CR2 |= ADC_CR2_SWSTART;
+	// ADC1->CR2 |= ADC_CR2_SWSTART;
 	
 	
 	// Test GPIOB
@@ -122,6 +126,10 @@ int main(void) {
 		else {
 			GPIOB->ODR &= ~(0x1UL << LED1_PIN);
 		}
+		
+		GPIOB->ODR |= (0x1UL << LED2_PIN);
+		delay_ms(1000);
+		// just test the new dely function
 	}
 }
 
@@ -133,9 +141,3 @@ void ADC_IRQHandler(void) {
 	}
 }
 
-/*
-void delay_ms(int time_ms) {
-	msTicks = 0;
-	while(msTicks < time_ms) {}
-}
-*/

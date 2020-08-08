@@ -1,10 +1,5 @@
 #include "USART.h"
 
-static void printUART(char *msg, ...) {
-	
-}
-
-
 
 
 
