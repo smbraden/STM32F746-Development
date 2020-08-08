@@ -13,7 +13,6 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 #include "stm32f746xx.h"
 #include "GPIO.h"
-#include "GPT.h"
 #include "pinDefines.h"
 
 // Macro defines
@@ -22,12 +21,17 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 // Global variables
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
-volatile uint32_t analogData = 0;
+volatile uint16_t analogData = 0;		// 12-bit ADC
 volatile uint32_t msTicks = 0;			// store millisecond ticks
 
 
 // Function prototypes
 void ADC_IRQHandler(void);
+
+// SysTick function prototypes
+void initSysTick(void);
+void SysTick_Handler(void);
+void delay_ms(uint32_t);
 
 
 int main(void) {
@@ -105,12 +109,13 @@ int main(void) {
 	
 	
 	// Test GPIOB
-	GPIOB->ODR |= (0x1UL << LED2_PIN);
+	// GPIOB->ODR |= (0x1UL << LED2_PIN);
 	// main event loop
 	while (1) {
-		uint32_t voltBars = analogData/512;		// 12-bit analog data, 8 LEDs
-											// (2^12)/8 = 512	
-		
+
+		// 12-bit analog data, to 3-bit to display to 8 LEDs
+		uint8_t voltBars = (analogData >> 9);
+
 		// light up x out of 8 "bars", which represent
 		// voltage across photoresistor relative to Vcc
 		for (uint8_t i = 0 ; i <= voltBars ; i++) { 
@@ -127,12 +132,12 @@ int main(void) {
 			GPIOB->ODR &= ~(0x1UL << LED1_PIN);
 		}
 		
-		GPIOB->ODR |= (0x1UL << LED2_PIN);
-		delay_ms(1000);
-		// just test the new dely function
+		GPIOB->ODR ^= (0x1UL << LED2_PIN);
+		delay_ms(500);
 	}
 }
 
+//---------ADC Interrupt Handler--------------//
 
 void ADC_IRQHandler(void) {
 	
@@ -140,4 +145,36 @@ void ADC_IRQHandler(void) {
 		analogData = ADC1->DR;
 	}
 }
+
+
+//---------SysTick Functions------------------//
+
+
+// Configures SysTick to generate 1 ms interrupts
+void initSysTick(void) {
+	
+	// 1 interrupt per millisecond
+	SysTick_Config(SystemCoreClock / 1000);	
+	// generating 1 interupt per (SystemCoreClock / 1000) 'ticks'
+
+}
+
+
+
+// SysTick interrupt Handler
+// Will only response to its interrupt if initSysTick() is called first 
+void SysTick_Handler(void)  {
+	msTicks++;
+}
+
+
+
+// Can only be called if initSysTick() is called first
+void delay_ms(uint32_t delayTime) {
+	
+	uint32_t curTicks;
+	curTicks = msTicks;
+	while ((msTicks - curTicks) < delayTime) {}
+}
+
 

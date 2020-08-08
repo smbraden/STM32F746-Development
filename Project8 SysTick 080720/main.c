@@ -17,7 +17,7 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #include "pinDefines.h"		// For configLED(LEDx, GPIOx), OutputHigh(GPIOx, PINx)
 
 // Global variables
-volatile unsigned long long msTicks = 0;	// store millisecond ticks. Won't overflow for millions of years
+uint32_t msTicks = 0;	// store millisecond ticks. Won't overflow for ~50 days
 
 // Function prototypes
 void initSysTick(void);

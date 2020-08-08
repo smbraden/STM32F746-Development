@@ -34,16 +34,20 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #define PC11 11
 
 // Global variables
-// uint32_t SystemCoreClock = 16000000;	// 16 MHz
 static volatile char recieved;
 volatile uint32_t msTicks = 0;		// store millisecond ticks
 
 
 // Function prototypes
 void UART4_IRQnHandler(void);
-static void print(char* msg, int length);
+static void print(const char* msg, ...);
 void SysTick_Handler(void);
 void initSysTick(void);
+
+// SysTick function prototypes
+void initSysTick(void);
+void SysTick_Handler(void);
+void delay_ms(uint32_t);
 
 int main(void) {
 	
@@ -87,16 +91,16 @@ int main(void) {
 
 	
 	char string[] = "Hello World!\n";
-	int strLen = strlen(string);
-	
 	initSysTick();
+	
 	while(1) {
 		
-		print(string, strLen);
-		while(msTicks != 0){}
+		print(string);
+		delay_ms(1000);
 	}
-
 }
+
+/*
 
 static void print(char* msg, int length) {
 	
@@ -106,8 +110,9 @@ static void print(char* msg, int length) {
 	}
 }
 
+*/
 
-/*
+
 
 static void print(const char* msg, ...) {
 	
@@ -122,7 +127,8 @@ static void print(const char* msg, ...) {
 	}
 }
 
-*/
+
+
 
 // USART4 interrupt handler
 void UART4_IRQnHandler(void) {
@@ -134,17 +140,32 @@ void UART4_IRQnHandler(void) {
     }
 }
 
-  
-void SysTick_Handler(void)  {                               /* SysTick interrupt Handler. */
-	msTicks = (msTicks < 1000)? (msTicks + 1) : 0;
-}
+//------------SysTick functions---------------//
 
+  
+// Configures SysTick to generate 1 ms interrupts
 void initSysTick(void) {
 	
-	uint32_t returnStatus;
-	returnStatus = SysTick_Config(SystemCoreClock / 1000);	// Configure SysTick to generate an interrupt every millisecond */
-
-	//if (returnStatus != 0)  {Error Handling}   // Check return code for errors 
+	// 1 interrupt per millisecond
+	SysTick_Config(SystemCoreClock / 1000);	
+	// generating 1 interupt per (SystemCoreClock / 1000) 'ticks'
 }
 
+
+
+// SysTick interrupt Handler
+// Will only response to its interrupt if initSysTick() is called first 
+void SysTick_Handler(void)  {
+	msTicks++;
+}
+
+
+
+// Can only be called if initSysTick() is called first
+void delay_ms(uint32_t delayTime) {
+	
+	uint32_t curTicks;
+	curTicks = msTicks;
+	while ((msTicks - curTicks) < delayTime) {}
+}
 
