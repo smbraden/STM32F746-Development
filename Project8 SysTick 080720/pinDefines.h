@@ -1,4 +1,9 @@
 //#define BUTTON_NUCLEO 13
+
+#ifndef PINDEFINES_H
+#define PINDEFINES_H
+
+
 #define BUTTON_B9 9
 #define BUTTON_B4 4
 #define LED1_PIN 0	// GPIOB
@@ -15,3 +20,5 @@
 #define E9 9
 
 #define ADC_PIN 3 // GPIOA
+
+#endif

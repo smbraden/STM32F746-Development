@@ -1,3 +1,5 @@
+#ifndef PINDEFINES_H
+#define PINDEFINES_H
 
 // on-board user button
 #define BUTTON1 13	// PC13
@@ -27,3 +29,5 @@
 // Universal Synchronous/Asynchronous Receiver/Transmitter
 #define TX4 10 // PC10 
 #define RX4 11 // PC11
+
+#endif

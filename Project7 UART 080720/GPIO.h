@@ -1,5 +1,7 @@
-#include "stm32f746xx.h"
+#ifndef GPIO_H
+#define GPIO_H
 
+#include "stm32f746xx.h"
 
 #define enablePeriphClock(AHBxENR, RCC_AHB1ENR_GPIOxEN) RCC->AHBxENR |= RCC_AHB1ENR_GPIOxEN;
 
@@ -11,3 +13,5 @@
 
 void configLED(uint8_t, GPIO_TypeDef*);
 void configButton(uint8_t, GPIO_TypeDef*);
+
+#endif

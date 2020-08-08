@@ -2,6 +2,10 @@
 #include "stm32f746xx.h"
 #include "GPT.h"
 
+
+
+
+
 // For configuring the system clock to 48MHz to PLL as source
 void clockConfig() {
 	
@@ -135,6 +139,7 @@ void initGPT(TIM_TypeDef* TIMx, uint16_t ms, uint32_t coreClock_hz) {
 	TIMx->CR1  |= TIM_CR1_CEN;
 
 }
+
 
 void stopGPT(TIM_TypeDef* TIMx) {
 	// Turn off the timer.

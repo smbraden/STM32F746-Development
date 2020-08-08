@@ -13,22 +13,17 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 #include "stm32f746xx.h"
 #include "GPIO.h"
-#include "pinDefines.h"
-
-// Macro defines
-
-// Type defines
-
+#include "GPT.h"			// For  void initSysTick(), SysTick_Handler(), delay_ms(uint32_t);
+#include "pinDefines.h"		// For configLED(LEDx, GPIOx), OutputHigh(GPIOx, PINx)
 
 // Global variables
-static volatile uint32_t msTicks = 0;			// store millisecond ticks
-
+volatile uint32_t msTicks = 0;			// store millisecond ticks
 
 // Function prototypes
+void initSysTick(void);
 void SysTick_Handler(void);
-void initSysTick();
 void delay_ms(uint32_t);
- 
+
 
 int main(void) {
 	
@@ -44,33 +39,44 @@ int main(void) {
 	while (1) {
 		
 		// just test the new delay function
-		GPIOB->ODR ^= (0x1UL << LED2_PIN);
+		Toggle(GPIOB, LED2_PIN);
 		delay_ms(1000);			
 	}
 }
 
 
+// Configures SysTick to generate 1 ms interrupts
+void initSysTick(void) {
+	
+	// 1 ms interrupts
+	uint32_t returnStatus = SysTick_Config(SystemCoreClock / 1000);	// generating 16,000 interupts per second
 
-//SysTick interrupt Handler
+	/*
+	
+	// Check return code for errors
+	if (returnStatus != 0)  {   
+		GPIOB->ODR ^= (0x1UL << LED1_PIN); 
+	}
+
+	*/
+	
+}
+
+// SysTick interrupt Handler
+// Will only response to its interrupt if initSysTick() is called first 
 void SysTick_Handler(void)  {
 	msTicks++;
 }
 
-void initSysTick() {
-	
-	// Configure SysTick to generate 1ms interrupts
-	uint32_t returnStatus = SysTick_Config(SystemCoreClock / 1000);	// generating 16,000 interupts per second
 
-	// Check return code for errors
-	if (returnStatus != 0)  {   
-		GPIOB->ODR ^= (0x1UL << LED1_PIN); 
-	}							
-}
-
+// Can only be called if initSysTick() is called first
 void delay_ms(uint32_t delayTime) {
 	
 	uint32_t curTicks;
 	curTicks = msTicks;
 	while ((msTicks - curTicks) < delayTime) {}
 }
+
+
+
 
