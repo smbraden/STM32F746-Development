@@ -17,7 +17,7 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #include "pinDefines.h"		// For configLED(LEDx, GPIOx), OutputHigh(GPIOx, PINx)
 
 // Global variables
-volatile uint32_t msTicks = 0;			// store millisecond ticks
+volatile unsigned long long msTicks = 0;	// store millisecond ticks. Won't overflow for millions of years
 
 // Function prototypes
 void initSysTick(void);
@@ -48,8 +48,9 @@ int main(void) {
 // Configures SysTick to generate 1 ms interrupts
 void initSysTick(void) {
 	
-	// 1 ms interrupts
-	uint32_t returnStatus = SysTick_Config(SystemCoreClock / 1000);	// generating 16,000 interupts per second
+	// 1 interrupt per millisecond
+	uint32_t returnStatus = SysTick_Config(SystemCoreClock / 1000);	
+	// generating 1 interupt per (SystemCoreClock / 1000) 'ticks'
 
 	/*
 	
@@ -62,11 +63,15 @@ void initSysTick(void) {
 	
 }
 
+
+
 // SysTick interrupt Handler
 // Will only response to its interrupt if initSysTick() is called first 
 void SysTick_Handler(void)  {
 	msTicks++;
+	
 }
+
 
 
 // Can only be called if initSysTick() is called first
