@@ -403,16 +403,6 @@
               <FileType>5</FileType>
               <FilePath>.\pinDefines.h</FilePath>
             </File>
-            <File>
-              <FileName>GPT.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\GPT.c</FilePath>
-            </File>
-            <File>
-              <FileName>GPT.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\GPT.h</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
