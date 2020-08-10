@@ -18,29 +18,25 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 // microcontroller specific 
 #include "stm32f746xx.h"
 
-// C standard libraries
-#include <stdint.h>
-#include "string.h"
-#include "stdlib.h"
-#include "stdarg.h"
 
 // user defined libraries
 #include "GPIO.h"
-#include "GPT.h"
+#include "UART.h"
 #include "pinDefines.h"
 
-// Macro defines
-#define PC10 10
-#define PC11 11
+
+// Macros
+#define ROW_Pos (2U)					// LED row position of least sig bit
+#define ROW_Msk (0xFFUL << 2)			// LED row bit mask
+
 
 // Global variables
-static volatile char recieved;
-volatile uint32_t msTicks = 0;		// store millisecond ticks
-
+static volatile uint32_t data;				// data should be a byte, but make it uint8_t to hush compiler warning 
+static volatile uint32_t msTicks = 0;		// store millisecond ticks
 
 // Function prototypes
 void UART4_IRQnHandler(void);
-static void print(const char* msg, ...);
+
 void SysTick_Handler(void);
 void initSysTick(void);
 
@@ -49,96 +45,47 @@ void initSysTick(void);
 void SysTick_Handler(void);
 void delay_ms(uint32_t);
 
-int main(void) {
+// Testing
+void configDisplay(void);
+
+
+
+int main(void) {	//-----------Main Event Loop----------//
 	
-	// clock enable UART peripheral
-	RCC->APB1ENR &= ~RCC_APB1ENR_UART4EN;
-	RCC->APB1ENR |= RCC_APB1ENR_UART4EN;
-	// clock enable GPIO
-	RCC->AHB1ENR &= ~RCC_AHB1ENR_GPIOCEN;	// using PC10 and PC11
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-	// [For some other STM32's, alternate function clock enable here]
-		
-	// configure pins PC10 and PC11 for UART4
-	GPIOC->MODER &= ~((0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11))); 	// Reset
-	GPIOC->MODER |= (0x2UL << (2 * PC10)) | (0x2UL << (2 * PC11));		// Alternate Function mode
-	GPIOC->OTYPER &= ~((0x1UL << PC10) | (0x1UL << PC11));				// Output push-pull (reset state)
-	GPIOC->OSPEEDR &= ~((0x3UL << (2 * PC10)) | (0x3UL << (2 * PC11)));	// Reset
-	GPIOC->OSPEEDR |= (0x2UL << (2 * PC10)) | (0x2UL << (2 * PC11));	// High speed
-
-	// GPIO alternate function configuration
-    GPIOC->AFR[1] &= ~GPIO_AFRH_AFRH2;		// AF8 for UART4_RX & UART4_TX 
-    GPIOC->AFR[1] |=  GPIO_AFRH_AFRH1_3;	// bits to configure alternate function I/Os: AF8 = 1000
-    GPIOC->AFR[1] &= ~GPIO_AFRH_AFRH2;
-    GPIOC->AFR[1] |=  GPIO_AFRH_AFRH1_3;
-
-	// set the baud rate to 9600... see pg 1040 of Ref Manual
-	uint32_t uartdiv = SystemCoreClock / 9600;
-	
-	UART4->BRR = (((uartdiv / 16) << USART_BRR_DIV_MANTISSA_Pos) 
-				| ((uartdiv % 16) << USART_BRR_DIV_FRACTION_Pos));
-	// UART4->BRR = uartdiv;
-
-	// Enable the USART peripheral with RX and TX timeout interrupts.
-	UART4->CR1 |= (USART_CR1_RE | USART_CR1_TE 
-				 | USART_CR1_UE | USART_CR1_RXNEIE );
-
-	// set USART word length to 8
-	UART4->CR1 &= ~USART_CR1_M;
-
-	// Enable the USART peripheral: UE, TE, RE bits 
-	UART4->CR1 |= (USART_CR1_RE | USART_CR1_TE | USART_CR1_UE );
-
-	
-	char string[] = "Hello World!\n";
 	initSysTick();
+	configDisplay();
 	
+	configUART();
+	
+	//-------- test transmitter-----------//
+	char string[] = "Hello World!\n";
+	print(string);
+	
+	
+	//--------test reciever--------------/
 	while(1) {
 		
-		print(string);
-		delay_ms(1000);
 	}
+
 }
 
-/*
+//----------- USART4 interrupt handler----------//
 
-static void print(char* msg, int length) {
-	
-	for(int i = 0; i < length; i++) {
-		UART4->RDR = msg[i];					// RDR is 8-bit (ASCII)
-		while(!(UART4->ISR & USART_ISR_TXE)){}
-	}
-}
-
-*/
-
-
-
-static void print(const char* msg, ...) {
-	
-	char buffer[80];
-	va_list args;
-	va_start(args, msg);
-	vsprintf(buffer, msg, args);
-	
-	for(int i = 0; i < strlen(buffer); i++) {
-		UART4->RDR = buffer[i];					// RDR is 8-bit (ASCII)
-		while(!(UART4->ISR & USART_ISR_TXE)){}
-	}
-}
-
-
-
-
-// USART4 interrupt handler
 void UART4_IRQnHandler(void) {
 
-    // 'Receive register not empty' interrupt.
-    if (UART4->ISR & USART_ISR_RXNE) {	// RXNE bit set by hardware when the content of the RDR shift register has been transferred to the USART_RDR register
-      // Copy new data into the buffer.
-      recieved = UART4->RDR;
+    
+    if (UART4->ISR & USART_ISR_RXNE) {		// 'Receive register not empty' interrupt.
+		data = UART4->RDR;					// Copy new data into the buffer.
+		UART4->TDR = data;					// echo it back
+		GPIOE->ODR &= ~ROW_Msk;
+		GPIOE->ODR |= data << ROW_Pos;		// display the byte value in binary
+		while(!(UART4->ISR & USART_ISR_TC)) {}	// pause until byte transfered
+		
     }
+	// RXNE bit set by hardware when the content of the 
+	// RDR shift register has been transferred to the USART_RDR register
 }
+
 
 //------------SysTick functions---------------//
 
@@ -154,7 +101,7 @@ void initSysTick(void) {
 
 
 // SysTick interrupt Handler
-// Will only response to its interrupt if initSysTick() is called first 
+// Will only response to its interrupt if initSysTick() is called beforehand 
 void SysTick_Handler(void)  {
 	msTicks++;
 }
@@ -169,3 +116,27 @@ void delay_ms(uint32_t delayTime) {
 	while ((msTicks - curTicks) < delayTime) {}
 }
 
+
+
+//-----------------LED bank for Reciever Test---------------//
+
+void configDisplay(void) {
+	
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
+	
+	// Set the wired LED pins to push-pull low-speed output.
+	// Using pins 2 through 9, inclusive 
+	for (uint8_t PINx = 2; PINx < 10; PINx++) {
+		// Set LED pin to push-pull low-speed output.
+		GPIOE->MODER &= ~(0x3UL << (PINx*2));		// input mode (reset state)
+		GPIOE->MODER |= (0x1UL << (PINx*2));		// output mode
+		GPIOE->OTYPER &= ~(1UL << PINx);			// Push-pull output
+		GPIOE->PUPDR &= ~(3UL << (PINx*2));		// No pull-up/pull-down resistors
+	}	
+	
+	// Test LED bank with a few flashes
+	for (int i = 0; i < 6; i++) {
+		GPIOE->ODR ^= ROW_Msk;
+		delay_ms(1000);
+	}
+}
