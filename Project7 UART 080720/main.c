@@ -49,7 +49,6 @@ void delay_ms(uint32_t);
 void configDisplay(void);
 
 
-
 int main(void) {	//-----------Main Event Loop----------//
 	
 	initSysTick();
@@ -58,8 +57,8 @@ int main(void) {	//-----------Main Event Loop----------//
 	configUART();
 	
 	//-------- test transmitter-----------//
-	//char string[] = "Hello World!\n";
-	//print(string);
+	char string[] = "Hello World!\n";
+	print(string);
 	
 	
 	//--------test reciever--------------/

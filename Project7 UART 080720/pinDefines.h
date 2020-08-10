@@ -27,7 +27,12 @@
 #define ADC_PIN 3 // PA3
 
 // Universal Synchronous/Asynchronous Receiver/Transmitter
+//#define TX4 0 // PA0 
+//#define RX4 1 // PA1
+
+// Use of PC10 and PC11 for UART4 would require remapping
 #define TX4 10 // PC10 
 #define RX4 11 // PC11
+
 
 #endif
