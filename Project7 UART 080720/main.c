@@ -58,12 +58,21 @@ int main(void) {	//-----------Main Event Loop----------//
 	configUART();
 	
 	//-------- test transmitter-----------//
-	char string[] = "Hello World!\n";
-	print(string);
+	//char string[] = "Hello World!\n";
+	//print(string);
 	
 	
 	//--------test reciever--------------/
 	while(1) {
+		
+		/*
+			get new data characters, and display 
+			in binary to the GPIOE row...
+		
+		GPIOE->ODR &= ~ROW_Msk;
+		GPIOE->ODR |= data << ROW_Pos;			// display the byte value in binary
+		while(!(UART4->ISR & USART_ISR_TC)) {}	// pause until byte transfered
+		*/
 		
 	}
 
@@ -71,16 +80,13 @@ int main(void) {	//-----------Main Event Loop----------//
 
 //----------- USART4 interrupt handler----------//
 
+
 void UART4_IRQnHandler(void) {
 
-    
     if (UART4->ISR & USART_ISR_RXNE) {		// 'Receive register not empty' interrupt.
 		data = UART4->RDR;					// Copy new data into the buffer.
 		UART4->TDR = data;					// echo it back
-		GPIOE->ODR &= ~ROW_Msk;
-		GPIOE->ODR |= data << ROW_Pos;		// display the byte value in binary
-		while(!(UART4->ISR & USART_ISR_TC)) {}	// pause until byte transfered
-		
+		while(!(UART4->ISR & USART_ISR_TC)){}
     }
 	// RXNE bit set by hardware when the content of the 
 	// RDR shift register has been transferred to the USART_RDR register

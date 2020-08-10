@@ -4,9 +4,9 @@
 
 // C standard libraries
 #include <stdio.h>
-#include "string.h"
-#include "stdlib.h"
-#include "stdarg.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
 
 // Temporarily, this only configures PC10 and PC11 for UART4
 void configUART(void) {
@@ -49,12 +49,15 @@ void configUART(void) {
 
 
 	//--------------------Baud rate-----------------------------//
-		
-	// set the baud rate to 9600... see pg 1040 of Ref Manual
-	uint32_t uartdiv = SystemCoreClock / 9600;
 	
-	UART4->BRR = (((uartdiv / 16) << USART_BRR_DIV_MANTISSA_Pos) 
-				| ((uartdiv % 16) << USART_BRR_DIV_FRACTION_Pos));
+	UART4->CR1 |= ~USART_CR1_OVER8;	// Select oversampling by 16 (OVER8=0)
+
+	// set the baud rate to 9600... see pg 1040 of Ref Manual
+	uint32_t uartdiv_mant = (SystemCoreClock * 2) / 9600;
+	uint32_t uartdiv_frac = (SystemCoreClock * 2) % 9600;
+	
+	UART4->BRR = (uartdiv_mant << USART_BRR_DIV_MANTISSA_Pos) 
+				| (uartdiv_frac << USART_BRR_DIV_FRACTION_Pos);
 	
 	// Enable USART interrupts whenever ORE=1 or RXNE=1 in the USART_ISR 
 	UART4->CR1 |= USART_CR1_RXNEIE;
@@ -70,11 +73,15 @@ void configUART(void) {
 	
 	//---------------------------------------------------------------///
 		
-	// Enable the USART peripheral: 
+	// Enable the USART 
 	// UE, TE, RE ("UART Enable", "Transmitter Enable", Reciever Enable" bits) 
 	UART4->CR1 |= (USART_CR1_RE | USART_CR1_TE | USART_CR1_UE );
 	
 }
+
+
+
+
 
 
 void print(const char* msg, ...) {
@@ -89,7 +96,6 @@ void print(const char* msg, ...) {
 		while(!(UART4->ISR & USART_ISR_TC)){}
 	}
 }
-
 
 
 
