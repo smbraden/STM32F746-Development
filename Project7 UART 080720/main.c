@@ -34,11 +34,9 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 static volatile uint32_t data;				// data should be a byte, but make it uint8_t to hush compiler warning 
 static volatile uint32_t msTicks = 0;		// store millisecond ticks
 
-// Function prototypes
-void UART4_IRQnHandler(void);
+// Interrupt prototypes
+// void UART4_IRQnHandler(void);
 
-void SysTick_Handler(void);
-void initSysTick(void);
 
 // SysTick function prototypes
 void initSysTick(void);
@@ -53,24 +51,19 @@ int main(void) {	//-----------Main Event Loop----------//
 	
 	initSysTick();
 	configDisplay();
-	
 	configUART();
 	
-	//-------- test transmitter-----------//
-	char string[] = "Hello World!\n";
-	print(string);
 	
-	
-	//--------test reciever--------------/
 	while(1) {
 		
-		/*
-			get new data characters, and display 
-			in binary to the GPIOE row...
+	//--------test transmitter--------------//
+		sendByte('U');
+		delay_ms(100);
 		
-		GPIOE->ODR &= ~ROW_Msk;
-		GPIOE->ODR |= data << ROW_Pos;			// display the byte value in binary
-		while(!(UART4->ISR & USART_ISR_TC)) {}	// pause until byte transfered
+		/*		 
+			GPIOE->ODR &= ~ROW_Msk;
+			GPIOE->ODR |= data << ROW_Pos;			// display the byte value in binary
+			while(!(UART4->ISR & USART_ISR_TC)) {}	// pause until byte transfered
 		*/
 		
 	}
@@ -79,7 +72,7 @@ int main(void) {	//-----------Main Event Loop----------//
 
 //----------- USART4 interrupt handler----------//
 
-
+/*	will be used to test reciever
 void UART4_IRQnHandler(void) {
 
     if (UART4->ISR & USART_ISR_RXNE) {		// 'Receive register not empty' interrupt.
@@ -90,7 +83,7 @@ void UART4_IRQnHandler(void) {
 	// RXNE bit set by hardware when the content of the 
 	// RDR shift register has been transferred to the USART_RDR register
 }
-
+*/
 
 //------------SysTick functions---------------//
 
@@ -123,7 +116,7 @@ void delay_ms(uint32_t delayTime) {
 
 
 
-//-----------------LED bank for Reciever Test---------------//
+//-----------------LED bank for Reciever binary display---------------//
 
 void configDisplay(void) {
 	

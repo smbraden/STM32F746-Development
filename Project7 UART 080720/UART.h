@@ -3,8 +3,11 @@
 
 #include "stm32f746xx.h"
 
+
+
 // Temporarily, this only configures PC10 and PC11 for UART4
 void configUART(void);
+void sendByte(char);
 void print(const char* msg, ...);
 
 
