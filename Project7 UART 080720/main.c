@@ -38,26 +38,25 @@ static volatile uint32_t msTicks = 0;		// store millisecond ticks
 // Interrupt prototypes
 void USART6_IRQnHandler(void);
 
-
 // SysTick function prototypes
 void initSysTick(void);
 void SysTick_Handler(void);
 void delay_ms(uint32_t);
 
-// Testing
+// GPIO
 void configDisplay(void);
-
 
 int main(void) {	//-----------Main Event Loop----------//
 	
 	initSysTick();
 	configDisplay();
 	configUART();
-	
+	sendString("Hello World!");
 	
 	while(1) {
 	
-		GPIOE->ODR = (data << ROW_Pos);			// display the byte value in binary
+		GPIOE->ODR &= ~(ROW_Msk);					// clear the previous display
+		GPIOE->ODR |= (data << ROW_Pos);			// output the current data byte in binary
 		
 	}
 
@@ -70,7 +69,7 @@ void USART6_IRQnHandler(void) {
 
     if (USART6->ISR & USART_ISR_RXNE) {			// 'Receive register not empty' interrupt.
 		data = USART6->RDR;						// Copy new data into the buffer.
-		sendByte(data);
+		sendByte(data);							// echo the characters
     }
 	// RXNE bit set by hardware when the content of the 
 	// RDR shift register has been transferred to the USART_RDR register
@@ -89,13 +88,11 @@ void initSysTick(void) {
 }
 
 
-
 // SysTick interrupt Handler
 // Will only response to its interrupt if initSysTick() is called beforehand 
 void SysTick_Handler(void)  {
 	msTicks++;
 }
-
 
 
 // Can only be called if initSysTick() is called first
@@ -105,7 +102,6 @@ void delay_ms(uint32_t delayTime) {
 	curTicks = msTicks;
 	while ((msTicks - curTicks) < delayTime) {}
 }
-
 
 
 //-----------------LED bank for Reciever binary display---------------//

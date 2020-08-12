@@ -9,7 +9,7 @@ void configUART(void) {
 	
 	// Off while configuring
 	USART6->CR1 &= ~(USART_CR1_RE | USART_CR1_TE | USART_CR1_UE );
-	
+		
 	//-----------------Eanble UART Clock------------------------------------//
 	
 	// clock enable UART peripheral
@@ -18,7 +18,7 @@ void configUART(void) {
 	// clock enable GPIO
 	RCC->AHB1ENR &= ~RCC_AHB1ENR_GPIOCEN;
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
-	
+		
 	//-----------------Configure UART GPIO--------------------------------//
 	
 	// configure pin PC6 transmitter (TX6) USART6
@@ -40,7 +40,7 @@ void configUART(void) {
 	// GPIO alternate function configuration					// AFR[0] is for the lower pins' register
     GPIOC->AFR[0] &= ~(GPIO_AFRL_AFRL6 & GPIO_AFRL_AFRL7);		// 
     GPIOC->AFR[0] |=  GPIO_AFRL_AFRL6_3 | GPIO_AFRL_AFRL7_3;	// UART6 Alt function bits: AF8 = 0b1000
-
+	
 	//--------------------Redundant default settings---------------------//
 	
 	// set UART word length to 8	M[1:0] = 00: 1 Start bit, 8 data bits, n stop bits
@@ -54,20 +54,20 @@ void configUART(void) {
 	
 	USART6->CR1 |= ~USART_CR1_OVER8;	// Select oversampling by 16 (OVER8=0)
 	
-	//	For baud of 9600 with OVER8 = 0 at 16MHz:
+	/*	 For baud of 9600 with OVER8 = 0 at 16MHz:
 	
-	//	USARTDIV = fck/baud = 16,000,000/9600 ~= 1666.666667 ~= 1666.65625
+		USARTDIV = fck/baud = 16,000,000/9600 ~= 1666.666667 ~= 1666.65625
 		
-	//	binary:	0110 1000 0010 . 1010
-	//	hex:	Mantissa = 0x682	Fraction = 0xA 	
-
+		binary:	0110 1000 0010 . 1010
+		hex:	Mantissa = 0x682	Fraction = 0xA 	
+	*/
 	
 	USART6->BRR = (0x682 << USART_BRR_DIV_MANTISSA_Pos) 
 				| (0xA << USART_BRR_DIV_FRACTION_Pos);
 	
-	// USART6->BRR = (0x682A << USART_BRR_DIV_FRACTION_Pos)
+	// Equivalently: USART6->BRR = (0x682A << USART_BRR_DIV_FRACTION_Pos)
 	
-	//--------------Hardware Interupts----------------------------------//
+	//--------------Hardware Interupt----------------------------------//
 	
 	// Enable USART interrupts whenever ORE=1 or RXNE=1 in the USART_ISR 
 	USART6->CR1 |= USART_CR1_RXNEIE;
@@ -80,7 +80,7 @@ void configUART(void) {
 	// UART4->CR1 |= USART_CR1_TCIE;	// Transmission Complete interrupt enable
 	
 
-	//---------------------------------------------------------------//
+	//---------------------------------------------------------------///
 
 	// Enable the USART 
 	// UE, TE, RE ("UART Enable", "Transmitter Enable", Reciever Enable" bits) 
@@ -109,4 +109,27 @@ void sendString(char* msg) {
 		sendByte(msg[i]);
 }
 
+
+
+
+
+/* 
+	(*)Equation 1: Baud rate for standard USART (SPI mode included) (OVER8 = 0 or 1)
+	In case of oversampling by 16, the equation is:
+	
+		Tx/Rx baud = fck/USARTDIV --> USARTDIV = fck/baud
+		
+	In case of oversampling by 8, the equation is:
+	
+		Tx/Rx baud = (2 * fck)/USARTDIV --> USARTDIV = (2* fck)/baud
+		
+	USARTDIV is an unsigned fixed point number that is coded on the USART_BRR register.
+		When OVER8 = 0, BRR = USARTDIV.
+		When OVER8 = 1
+			– BRR[2:0] = USARTDIV[3:0] shifted 1 bit to the right.
+			– BRR[3] must be kept cleared.
+			– BRR[15:4] = USARTDIV[15:4]
+	
+		(pg 1040 of Reference Manual)	
+*/
 
