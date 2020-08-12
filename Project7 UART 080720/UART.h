@@ -8,7 +8,7 @@
 // Temporarily, this only configures PC10 and PC11 for UART4
 void configUART(void);
 void sendByte(char);
-void print(const char* msg, ...);
+void sendString(char* msg);
 
 
 #endif

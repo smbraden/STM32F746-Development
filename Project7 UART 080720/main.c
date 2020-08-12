@@ -6,6 +6,7 @@ Description:	Basic implementation of the Nucleo's Analog to Digital Converter
 Author:			Sonja Braden
 
 References:		https://github.com/WRansohoff/STM32_UART_Examples/tree/master/receive_irq
+				http://web.sonoma.edu/users/f/farahman/sonoma/courses/es310/310_arm/lectures/resources/ARM-UART-setting.pdf
 				https://www.youtube.com/watch?v=nieOpDR7kBs&list=PLmY3zqJJdVeNIZ8z_yw7Db9ej3FVG0iLy&index=10&t=489s
 
 IDE:			Keil uVision 5
@@ -31,11 +32,11 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 
 
 // Global variables
-static volatile uint32_t data;				// data should be a byte, but make it uint8_t to hush compiler warning 
+static volatile uint8_t data;				// data should be a byte, but make it uint8_t to hush compiler warning 
 static volatile uint32_t msTicks = 0;		// store millisecond ticks
 
 // Interrupt prototypes
-// void UART4_IRQnHandler(void);
+void USART6_IRQnHandler(void);
 
 
 // SysTick function prototypes
@@ -55,35 +56,26 @@ int main(void) {	//-----------Main Event Loop----------//
 	
 	
 	while(1) {
-		
-	//--------test transmitter--------------//
-		sendByte('U');
-		delay_ms(100);
-		
-		/*		 
-			GPIOE->ODR &= ~ROW_Msk;
-			GPIOE->ODR |= data << ROW_Pos;			// display the byte value in binary
-			while(!(UART4->ISR & USART_ISR_TC)) {}	// pause until byte transfered
-		*/
+	
+		GPIOE->ODR = (data << ROW_Pos);			// display the byte value in binary
 		
 	}
 
 }
 
-//----------- USART4 interrupt handler----------//
+//----------- USART6 interrupt handler---------//
 
-/*	will be used to test reciever
-void UART4_IRQnHandler(void) {
 
-    if (UART4->ISR & USART_ISR_RXNE) {		// 'Receive register not empty' interrupt.
-		data = UART4->RDR;					// Copy new data into the buffer.
-		UART4->TDR = data;					// echo it back
-		while(!(UART4->ISR & USART_ISR_TC)){}
+void USART6_IRQnHandler(void) {
+
+    if (USART6->ISR & USART_ISR_RXNE) {			// 'Receive register not empty' interrupt.
+		data = USART6->RDR;						// Copy new data into the buffer.
+		sendByte(data);
     }
 	// RXNE bit set by hardware when the content of the 
 	// RDR shift register has been transferred to the USART_RDR register
 }
-*/
+
 
 //------------SysTick functions---------------//
 

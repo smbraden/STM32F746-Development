@@ -26,13 +26,17 @@
 // Analog Digital Converter
 #define ADC_PIN 3 // PA3
 
-// Universal Synchronous/Asynchronous Receiver/Transmitter
+// Default UART4 pins
 //#define TX4 0 // PA0 
 //#define RX4 1 // PA1
 
-// Use of PC10 and PC11 for UART4 would require remapping
+// Remapped UART4 pins
 #define TX4 10 // PC10 
 #define RX4 11 // PC11
+
+// Default UART6 pins
+#define TX6 6 // PC6 
+#define RX6 7 // PC7
 
 
 #endif
