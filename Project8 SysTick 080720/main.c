@@ -11,9 +11,7 @@ uVision
 Dependencies:	CMSIS Core, STM32F746xx Startup files
 */
 
-#include "stm32f746xx.h"
-#include "GPIO.h"
-#include "GPT.h"			// For  void initSysTick(), SysTick_Handler(), delay_ms(uint32_t);
+#include "stm32f746xx.h"	
 #include "pinDefines.h"		// For configLED(LEDx, GPIOx), OutputHigh(GPIOx, PINx)
 
 // Global variables
@@ -39,7 +37,7 @@ int main(void) {
 	while (1) {
 		
 		// just test the new delay function
-		Toggle(GPIOB, LED2_PIN);
+		GPIOB->ODR |= (0x1UL << LED2_PIN);
 		delay_ms(1000);			
 	}
 }

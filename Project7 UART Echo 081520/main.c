@@ -1,10 +1,91 @@
-#include "UART.h"
-#include "pinDefines.h"
-#include "GPIO.h"
-#include <string.h>	// for strlen
+/*
+Project:		USART Echo
+
+Description:	Basic implementation of the Nucleo's UART peripheral.
+				The characters sent to the reciever through the keyboard
+				are echoed back to the serial terminal by the transmitter
+				
+Author:			Sonja Braden
+
+References:		https://github.com/WRansohoff/STM32_UART_Examples/tree/master/receive_irq
+				http://web.sonoma.edu/users/f/farahman/sonoma/courses/es310/310_arm/lectures/resources/ARM-UART-setting.pdf
+				https://www.youtube.com/watch?v=nieOpDR7kBs&list=PLmY3zqJJdVeNIZ8z_yw7Db9ej3FVG0iLy&index=10&t=489s
+
+IDE:			Keil uVision 5
+
+uVision 
+Dependencies:	CMSIS Core, STM32F746xx Startup files
+*/
 
 
-// This only configures PC6 and PC7 for USART6
+// microcontroller specific 
+#include "stm32f746xx.h"
+
+
+// Default UART6 pins
+#define TX6 6 // PC6 
+#define RX6 7 // PC7
+
+
+// Global variables
+volatile uint8_t data = '0';
+
+
+// Prototypes
+void configUART(void);
+void printString(const char[]);
+void transmitByte(char);
+void USART6_IRQnHandler(void);
+
+
+int main(void) {	//-----------Main Event Loop----------//
+	
+	configUART();
+	printString("Hello World!");
+	
+	while(1) {
+	
+	}
+
+}
+
+//----------- USART6 interrupt handler---------//
+
+void USART6_IRQnHandler(void) {
+
+    if (USART6->ISR & USART_ISR_RXNE) {			// 'Receive register not empty' interrupt.
+		data = USART6->RDR;						// Copy new data into the buffer.
+		USART6->TDR = data;						// echo the character
+		while(!(USART6->ISR & USART_ISR_TC)){}	// wait until char sent
+    }
+	// "RXNE bit set by hardware when the content of the 
+	// RDR shift register has been transferred to the USART_RDR register"
+}
+
+
+//-------- UART Functions --------------------//
+
+
+void transmitByte(char ch)
+{
+	while(!(USART6->ISR & USART_ISR_TC)){}	// Wait for empty flag
+	USART6->TDR = ch;						// Set data to Transmit Data Register
+}
+// "TC: Transmission complete
+// Bit is set by hardware if the transmission of a data frame is complete and if TXE is set."
+
+
+
+void printString(const char msg[]) {
+	
+	uint8_t i = 0;
+	while(msg[i]) {
+		transmitByte(msg[i]);
+		i++;
+	}
+}
+
+
 void configUART(void) {
 	
 	// Off while configuring
@@ -23,17 +104,14 @@ void configUART(void) {
 	
 	// configure pin PC6 transmitter (TX6) USART6
 	GPIOC->MODER	&=	~(0x3UL << (2 * TX6));			// Reset
-	GPIOC->MODER	|=	(0x2UL << (2 * TX6));			// Alternate Function mode
-	GPIOC->OTYPER	&=	~(0x1UL << TX6);				// Push-pull
+	GPIOC->OTYPER	&=	~(0x1UL << TX6);				// Output push-pull (reset state)
 	GPIOC->OSPEEDR	&=	~(0x3UL << (2 * TX6));			// Reset
-	GPIOC->OSPEEDR	|=	(0x3UL << (2 * TX6));			// High speed
 	GPIOC->PUPDR	&=	~(0x3UL << (2 * TX6));			// No pull-up or pull-down
 	
 	// configure pin PC7 reciever (RX6) USART6	
 	// Besides "Alt Function", these should be default
 	GPIOC->MODER	&=	~(0x3UL << (2 * RX6)); 			// Reset
 	GPIOC->MODER	|=	(0x2UL << (2 * RX6));			// Alternate Function mode
-	GPIOC->OTYPER	&=	~(0x1UL << RX6);				// Input, pull-up (reset state) Default
 	GPIOC->PUPDR	&=	~(0x3UL << (2 * RX6));			// No pull-up or pull-down
 	
 
@@ -67,7 +145,7 @@ void configUART(void) {
 	
 	// Equivalently: USART6->BRR = (0x682A << USART_BRR_DIV_FRACTION_Pos)
 	
-	//--------------Hardware Interupt----------------------------------//
+	//--------------------------------------------------------------//
 	
 	// Enable USART interrupts whenever ORE=1 or RXNE=1 in the USART_ISR 
 	USART6->CR1 |= USART_CR1_RXNEIE;
@@ -75,60 +153,12 @@ void configUART(void) {
 	NVIC_SetPriority(USART6_IRQn, 0x0UL);
 	NVIC_EnableIRQ(USART6_IRQn);
 
-
-	// UART4->CR1 |= USART_CR1_TXEIE;	// Transmit data register empty interrupt enable
-	// UART4->CR1 |= USART_CR1_TCIE;	// Transmission Complete interrupt enable
-	
-
-	//---------------------------------------------------------------///
-
 	// Enable the USART 
-	// UE, TE, RE ("UART Enable", "Transmitter Enable", Reciever Enable" bits) 
+	// UE, TE, RE ("UART Enable", "Reciever Enable", "Transmitter Enable" bits) 
 	USART6->CR1 |= (USART_CR1_UE | USART_CR1_RE | USART_CR1_TE);
 	
 }
 
 
 
-void sendByte(char ch)
-{
-	USART6->TDR = ch;						// Set data to Transmit Data Register
-	while(!(USART6->ISR & USART_ISR_TC)){}	// Wait for empty flag
-}
-// TC: Transmission complete
-// Bit is set by hardware if the transmission of a data frame is complete and if TXE is set. 
-
-
-
-void sendString(char* msg) {
-	
-	uint32_t length = strlen(msg);
-	
-	for(uint8_t i = 0; i < length; i++)
-		sendByte(msg[i]);
-}
-
-
-
-
-
-/* 
-	(*)Equation 1: Baud rate for standard USART (SPI mode included) (OVER8 = 0 or 1)
-	In case of oversampling by 16, the equation is:
-	
-		Tx/Rx baud = fck/USARTDIV --> USARTDIV = fck/baud
-		
-	In case of oversampling by 8, the equation is:
-	
-		Tx/Rx baud = (2 * fck)/USARTDIV --> USARTDIV = (2* fck)/baud
-		
-	USARTDIV is an unsigned fixed point number that is coded on the USART_BRR register.
-		When OVER8 = 0, BRR = USARTDIV.
-		When OVER8 = 1
-			– BRR[2:0] = USARTDIV[3:0] shifted 1 bit to the right.
-			– BRR[3] must be kept cleared.
-			– BRR[15:4] = USARTDIV[15:4]
-	
-		(pg 1040 of Reference Manual)	
-*/
 

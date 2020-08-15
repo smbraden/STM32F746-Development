@@ -1,7 +1,8 @@
 /*
-Description:	Basic implementation of the Nucleo's Analog to Digital Converter
-				An LED display wired to the E port will be utilized 
-				to represent the voltage across a photoresistor relative to the supply (3.3V)
+Description:	Basic implementation of the Nucleo's UART Peripheral. The reciever 
+				recieves a character byte from the standard input, and the binary 
+				value of the ASCII byte is displayed by 8 LEDs 
+				
 				
 Author:			Sonja Braden
 
@@ -63,7 +64,6 @@ int main(void) {	//-----------Main Event Loop----------//
 }
 
 //----------- USART6 interrupt handler---------//
-
 
 void USART6_IRQnHandler(void) {
 
