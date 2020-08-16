@@ -3,7 +3,7 @@
  * Auto generated Run-Time-Environment Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'UART' 
+ * Project: 'UART_echo' 
  * Target:  'Target 1' 
  */
 

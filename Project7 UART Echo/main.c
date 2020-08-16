@@ -41,15 +41,16 @@ void USART6_IRQnHandler(void);
 int main(void) {	//-----------Main Event Loop----------//
 	
 	configUART();
-	printString("Hello World!");
+	printString("Hello World!\n");
 	
 	while(1) {
-	
+		
 	}
 
 }
 
 //----------- USART6 interrupt handler---------//
+
 
 void USART6_IRQnHandler(void) {
 

@@ -1,7 +1,8 @@
 /*
 Description:	Basic implementation of the Nucleo's Analog to Digital Converter
-				An LED display wired to the E port will be utilized 
-				to represent the voltage across a photoresistor relative to the supply (3.3V)
+				An LED display wired to the E port is utilized to represent 
+				the voltage across the photoresistor element of a voltage divider
+				relative to the supply (3.3V)
 				
 Author:			Sonja Braden
 	
@@ -15,21 +16,22 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #include "GPIO.h"
 #include "pinDefines.h"
 
-// Macro defines
-//#define GPIOx GPIOE
 
 
 // Global variables
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
-volatile uint32_t analogData = 0;		// 12-bit ADC
+volatile uint32_t analogData = 0;		// 12-bit ADC data
+volatile uint8_t voltBars = 0;			// 8-bit ADC data
 volatile uint32_t msTicks = 0;			// store millisecond ticks
 
 
 // Function prototypes
-void ADC_IRQHandler(void);
+void configAWD(void);
 void configEnableLEDS(void);
 void configADC(void);
-void configAWD(void);
+void testLED1(void);
+void testLEDrow(void);
+
 
 // SysTick function prototypes
 void initSysTick(void);
@@ -39,88 +41,100 @@ void delay_ms(uint32_t);
 
 int main(void) {
 	
-	// Configure ADC
-	configADC();
+	configADC();							// Configure ADC
+	configAWD();
+	configEnableLEDS();						// Configure and enable LEDs
 	
-	// Configure and enable LEDs
-	configEnableLEDS();
-	
-	// Enable the ADC
-	ADC1->CR2 |= (ADC_CR2_ADON);
-	
-	// For single conversion mode, where the ADC does one conversion
-	// The conversion starts when either the SWSTART or the JSWSTART bit is set.
-	// ADC1->CR2 |= ADC_CR2_SWSTART;
-	
-	// Test GPIOB
-	GPIOB->ODR |= (0x1UL << LED2_PIN);
-	
-	// main event loop
 	while (1) {
+			
+		ADC1->CR2 |= ADC_CR2_ADON;			// Enable the ADC
+		ADC1->CR2 &= ~ADC_CR2_SWSTART;
+		ADC1->CR2 |= ADC_CR2_SWSTART;		// For single conversion mode, conversion starts when SWSTART bit is set.
 
-		// 12-bit analog data, to 3-bit to display to 8 LEDs
-		uint8_t voltBars = (analogData >> 9);
-
-		// light up x out of 8 "bars", representing voltage across photoresistor relative to Vcc
-		for (uint8_t i = 0 ; i <= voltBars ; i++) { 
-			GPIOE->ODR |= (1 << i);
-		}
-		delay_ms(50);
-		GPIOE->ODR &= ~ROW_MASK;
+		if(ADC1->SR & ADC_SR_AWD)			// Shut it down if voltage in danger zone
+			break;							// The AWD analog watchdog status bit is set 
+											// if the analog voltage converted by the ADC is
+											// below a lower threshold or above a higher threshold.
 		
-		// For debugging:
-		// on-board LED1 should turn on if recieving analog data
-		if (analogData > 0) {
-			GPIOB->ODR |= (0x1UL << LED1_PIN);
-		}
-		else {
-			GPIOB->ODR &= ~(0x1UL << LED1_PIN);
-		}
+		while(!(ADC1->SR & ADC_SR_EOC)){}
+		analogData = ADC1->DR;				// get converted data		
+		ADC1->CR2 &= ~ADC_CR2_ADON;			// put ADC in power down mode
+		testLED1(); 
+		testLEDrow(); 	
+		delay_ms(10);
+	}	
+}
+
+//------------------Testing---------------------//
+
+void testLED1(void) {
+	
+	// on-board LED1 should turn on if recieved analog data above threshold
+	// From observation, the default appears to be 9-bit data, consistent
+	// with the bit shift of 6 for testLEDrow() required to fit in 3 bits
+	if (analogData > 330) {	 // max 512
+		GPIOB->ODR |= (0x1UL << LED1_PIN);
+	}
+	else {
+		GPIOB->ODR &= ~(0x1UL << LED1_PIN);
 	}
 }
 
 
-//-----------------ADC-------------------//
+void testLEDrow(void) {
+	
+	// 9-bit analog data shifted to 3-bit for 8 LEDs
+	voltBars = (analogData >> 6);
+	// voltBars = (analogData >> 9);	// for 12-bit analog data
+	
+	// light up x out of 8 "bars", represent voltage across photoresistor relative to Vcc
+	GPIOE->ODR &= ~ROW_MASK;
+	for (uint8_t i = 0 ; i <= voltBars ; i++) { 
+		GPIOE->ODR |= (1 << i);
+	}
+}
+
+
+//-----------------Configure ADC-------------------//
 
 void configADC(void) {
 	
 	
-		/*	f_ADC = ADC clock frequency:
-		VDDA = 1.7V to 2.4V	-----	Max: 18MHz
-		VDDA = 2.4V to 3.6V -----	Max: 36MHz
-		
-		In the clear with default 16MHz	*/
+	/*	f_ADC = ADC clock frequency:
+	VDDA = 1.7V to 2.4V	-----	Max: 18MHz
+	VDDA = 2.4V to 3.6V -----	Max: 36MHz
 	
-	// Set prescalar to halve the ADCCLK,
-	// generated from the APB2 clock
+	In the clear with default 16MHz	*/
+	
+	// This would set prescalar to halve the ADCCLK:
 	// RCC->CFGR &= ~RCC_CFGR_PPRE2;
 	// RCC->CFGR |= RCC_CFGR_PPRE2_2;
 	
 	
 	// enable peripheral clock
-	RCC->AHB2ENR |= RCC_APB2ENR_ADC1EN;
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;	// using ADC on PA3
+	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;	// using ADC on PA0
 		
 	
-	// set PA3 to analog mode
+	// set ADC Pin to analog mode
 	GPIOA->OTYPER &= ~(0x1UL << ADC_PIN);
 	GPIOA->PUPDR &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->OSPEEDR &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->MODER &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->MODER |= (0x3UL << (ADC_PIN * 2));
 	
-	// ADC's are "Additional functions," not "Alternate functions"
+	// ADC's are "Additional functions," not "Alternate functions":
 	// Functions directly selected/enabled through peripheral registers
 	
 	// set L[3:0] to 0b0000 for 1 conversion
 	ADC1->SQR1 &= ~ADC_SQR1_L;
 	// Configure the first (and only) step in the sequence to read channel 10
-	ADC1->SQR3 &= ~ADC_SQR3_SQ1;
-	ADC1->SQR3 |= (0xAUL << ADC_SQR3_SQ1_Pos);	// (ADC_SQR3_SQ1_3 | ADC_SQR3_SQ1_1);	|= (10 << 0); 
+	ADC1->SQR3 &= ~ADC_SQR3_SQ1;				// Reset
+	ADC1->SQR3 |= (0xAUL << ADC_SQR3_SQ1_Pos);	// |= (ADC_SQR3_SQ1_3 | ADC_SQR3_SQ1_1);	|= (10 << 0); 
 
 	// set the sampling rate for channel 10 to 480 cycles
 	ADC1->SMPR1 &= ~ADC_SMPR1_SMP10;
-	ADC1->SMPR1 |= ADC_SMPR1_SMP10;
+	ADC1->SMPR1 |= ADC_SMPR1_SMP10; 			// 144 cycles: ADC_SMPR1_SMP10_2 | ADC_SMPR1_SMP10_1;
 	
 	/*
 		000: 3 cycles
@@ -132,41 +146,12 @@ void configADC(void) {
 		110: 144 cycles
 		111: 480 cycles		*/
 	
-
-	// enable End of Conversion interrupt in NVIC
-	ADC1->CR1 |= ADC_CR1_EOCIE;
-	NVIC_EnableIRQ(ADC_IRQn);
-	
-	// Continuous mode
-	ADC1->CR2 |= ADC_CR2_CONT;
-}
-
-
-//---------ADC Interrupt Handler--------------//
-
-// ADC status register (ADC_SR)
-// EOC: Regular channel end of conversion
-// This bit is set by hardware at the end of the conversion of a regular group of channels.
-//  It is cleared by software or by reading the ADC_DR register.
-
-void ADC_IRQHandler(void) {
-	
-	if(ADC1->SR & ADC_SR_EOC) {
-		analogData = ADC1->DR;
-	}
-	
-	/*
-	if(ADC->CSR & ADC_CSR_EOC1) {
-		analogData = ADC1->DR;
-	}
-	*/
 }
 
 
 //---------------- ADC Watchodg-----------------//
-void configAWD(void) {
-	
 
+void configAWD(void) {
 	
 	// Analog watchdog channel select bits
 	// These bits are set and cleared by software. 
@@ -179,38 +164,31 @@ void configAWD(void) {
 	
 	// Configure ADC watchdog higher threahold to 3.6V
 	ADC1->HTR &= ~ADC_HTR_HT;
-	ADC1->HTR |= //[ fill in the blank] 
-
-	// Analog watchdog interrupt enable
-	ADC1->CR1 |= ADC_CR1_AWDIE;
+	ADC1->HTR |= (512 << ADC_HTR_HT_Pos); 	// 9-bit
 
 	// Analog watchdog enable on regular channels
 	ADC1->CR1 &= ~ADC_CR1_AWDEN;
 	ADC1->CR1 |= ADC_CR1_AWDEN;
 
+	// Analog watchdog interrupt enable
+	// ADC1->CR1 |= ADC_CR1_AWDIE;
 }
 
 //-----------------LEDs------------------------//
 
 void configEnableLEDS(void) {
 	
-	// enable GPIOE peripheral clock
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;
-	// enable GPIOB peripheral clock
-	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
-	
-	// Set the wired LED pins to push-pull low-speed output.
-	for (uint8_t PINx = 2; PINx < 10; PINx++) {
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOEEN;			// enable GPIOE peripheral clock
+	for (uint8_t PINx = 2; PINx < 10; PINx++) {		// Set the wired LED pins to push-pull low-speed output.
 		configLED(PINx, GPIOE);
 	}
-	// set the onboard LEDs likewise
-	configLED(LED1_PIN, GPIOB);
-	configLED(LED2_PIN, GPIOB);
+	
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;			// enable GPIOB peripheral clock
+	configLED(LED1_PIN, GPIOB);						// set the onboard LED likewise
 }
 
 
 //---------SysTick Functions------------------//
-
 
 // Configures SysTick to generate 1 ms interrupts
 void initSysTick(void) {
@@ -239,3 +217,13 @@ void delay_ms(uint32_t delayTime) {
 	while ((msTicks - curTicks) < delayTime) {}
 }
 
+
+
+	/* 
+		Discontinuous mode used to convert a short sequence 
+		of n conversions (n = 8) that is part of the sequence of
+		conversions selected in the ADC_SQRx registers. 
+		
+		ADC1->CR1 |= ADC_CR1_DISCEN;
+		ADC1->CR1 &= ~ADC_CR1_DISCNUM; 
+	*/

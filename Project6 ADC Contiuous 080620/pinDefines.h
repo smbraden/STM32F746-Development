@@ -17,6 +17,6 @@
 #define E8 8
 #define E9 9
 
-#define ADC_PIN 3 // PA3
+#define ADC_PIN 0 // PA0
 
 #endif
