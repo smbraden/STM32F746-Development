@@ -15,10 +15,12 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #include "GPIO.h"
 #include "pinDefines.h"
 
-#define ADC_BITS 512
+#define ADC_MAX 4096	// 9-bit = 512 
+#define ADC_BITS 12
 
 // Global variables
-uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
+uint8_t ROW_Pos = (2U) ;
+uint32_t ROW_Msk = (0xFF << ROW_Pos);		// LED row bit mask
 volatile uint32_t analogData = 0;		// 9-bit ADC
 volatile uint32_t voltBars = 0;			// 3-bit ADC
 volatile uint32_t msTicks = 0;			// store millisecond ticks
@@ -30,7 +32,8 @@ void configEnableLEDS(void);
 void configADC(void);
 void test1(void);
 void testLEDrow(void);
-// void configAWD(void);
+void configAWD(void);
+// [AWD-triggered interrupt prototype]
 
 // SysTick function prototypes
 void initSysTick(void);
@@ -40,25 +43,11 @@ void delay_ms(uint32_t);
 
 int main(void) {
 	
-
-	
 	configEnableLEDS();
-	configADC();				
-//	configAWD();
-	NVIC_SetPriority(ADC_IRQn, 0x03UL);
-	NVIC_EnableIRQ(ADC_IRQn);
+	configAWD();
+	configADC();
 	
 	while(1) {
-
-		if(ADC1->SR & ADC_SR_AWD) {				// Analog watchdog, shut it down if danger zone
-			// GPIOB->ODR |= (0x1UL << LED2_PIN);									
-			break;
-		}
-			
-		while(!(ADC1->SR & ADC_SR_EOC)){}
-		testLEDrow();
-		test1();
-		delay_ms(10);
 
 	}
 }
@@ -69,15 +58,15 @@ int main(void) {
 void test1(void) {
 	
 	// on-board LED1 should turn on if recieving analog data
-	if (analogData > 0 && analogData < (ADC_BITS/3)) {
+	if (analogData > 0 && analogData < (ADC_MAX/3)) {
 		GPIOB->ODR |= (0x1UL << LED1_PIN);
 		GPIOB->ODR &= ~(0x1UL << (LED2_PIN | LED3_PIN));
 	}
-	else if (analogData >= (ADC_BITS/3) && analogData < (2 * ADC_BITS/3)) {
+	else if (analogData >= (ADC_MAX/3) && analogData < (2 * ADC_MAX/3)) {
 		GPIOB->ODR |= (0x1UL << LED2_PIN);
 		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED3_PIN));
 	}
-	else if (analogData >= (2 * ADC_BITS/3) && analogData < (3 * ADC_BITS/3)) {
+	else if (analogData >= (2 * ADC_MAX/3) && analogData < (3 * ADC_MAX/3)) {
 		GPIOB->ODR |= (0x1UL << LED3_PIN);
 		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED2_PIN));
 	}
@@ -85,7 +74,7 @@ void test1(void) {
 
 void testLEDrow(void) {
 
-	GPIOE->ODR &= ~ROW_MASK;						// light up x out of 8 "bars", representing voltage
+	GPIOE->ODR &= ~ROW_Msk;						// light up x out of 8 "bars", representing voltage
 	for (uint8_t i = 0 ; i <= voltBars ; i++) { 
 		GPIOE->ODR |= (1 << i);
 	}
@@ -144,9 +133,11 @@ void configADC(void) {
 		110: 144 cycles
 		111: 480 cycles		*/
 	
-
 	// enable End of Conversion interrupt
 	ADC1->CR1 |= ADC_CR1_EOCIE;
+	NVIC_SetPriority(ADC_IRQn, 0x03UL);
+	NVIC_EnableIRQ(ADC_IRQn);
+	
 	
 	// Continuous conversion mode
 	ADC1->CR2 |= ADC_CR2_CONT;		// This bit is set and cleared by software. If set, 
@@ -174,34 +165,62 @@ void ADC_IRQHandler(void) {
 	
 	// ADC1->SR &= ~ADC_SR_EOC;
 	analogData = ADC1->DR;
-	voltBars = (analogData >> 6);				// 9-bit analog data, to 3-bit for 8 LEDs
+	voltBars = (analogData >> (ADC_BITS - 3));				// 9-bit analog data, to 3-bit for 8 LEDs
+	
+	testLEDrow();
+	test1();
+	delay_ms(10);
 	
 }
 
 
 //---------------- ADC Watchodg-----------------//
-/*
+
 void configAWD(void) {
-	
-	// Analog watchdog channel select bits
-	// These bits are set and cleared by software. 
-	// They select the input channel to be guarded by the analog watchdog.
-	ADC1->CR1 &= ~ADC_CR1_AWDCH;
-	ADC1->CR1 |= (10 << ADC_CR1_AWDCH_Pos);
 	
 	// Configure ADC watchdog lower threshold to 0
 	ADC1->LTR &= ~ADC_LTR_LT;
 	
-	// Configure ADC watchdog higher threahold to max 9-bit potential
+	// Configure ADC watchdog higher threahold to max potential bits, ADC_MAX
 	ADC1->HTR &= ~ADC_HTR_HT;
-	ADC1->HTR |= (512 << ADC_HTR_HT_Pos);
+	ADC1->HTR |= (ADC_MAX << ADC_HTR_HT_Pos);
 
 	// Analog watchdog enable on regular channels
 	ADC1->CR1 &= ~ADC_CR1_AWDEN;
 	ADC1->CR1 |= ADC_CR1_AWDEN;
 
+	// Interupts enable
+	ADC1->CR1 &= ~ADC_CR1_AWDIE;
+	ADC1->CR1 |= ADC_CR1_AWDIE;
+	
+//	set AWD-triggered interrupt... in progress
+//	NVIC_SetPriority(AWD1_IRQn, 0x03UL);
+//	NVIC_EnableIRQ(AWD1_IRQn);
+
+}
+
+//-----------ADC Watchodg Inerrupt------------//
+/*
+
+if(ADC1->SR & ADC_SR_AWD) {					// Analog watchdog, shut it down if danger zone
+	
+	// GPIOB->ODR |= (0x1UL << LED2_PIN);									
+	ADC1->CR2 &= ~ADC_CR2_SWSTART;			// stop conversions
+	ADC1->CR2 &= ~(ADC_CR2_ADON);			// power off the ADC
+
+	ADC1->SR &= ~ADC_SR_AWD					// clear the interrupt flag
+
+	GPIOB->ODR &= ~(0x1UL << (LED2_PIN | LED2_PIN | LED3_PIN));
+	GPIOE->ODR &= ~(ROW_Msk);
+	
+	for (int i = 0; i < 8; i++) {			// flashing indicates conversions halted
+		GPIOE->ODR ^= ROW_Msk;
+		delay_ms(1000);
+	}
+
 }
 */
+
 
 //-----------------LEDs------------------------//
 
