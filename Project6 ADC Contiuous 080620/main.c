@@ -15,12 +15,13 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #include "GPIO.h"
 #include "pinDefines.h"
 
-#define ADC_MAX 4096	// 9-bit = 512 
-#define ADC_BITS 12
+#define ADC_MAX 4096		// 8-bit = 256, 9-bit = 512, 10-bit = 1024, 12-bit = 4096
+#define ADC_BITS 9
+#define ROW_Pos (2U)
+#define ROW_Msk (0xFF << ROW_Pos)		// LED row bit mask
+
 
 // Global variables
-uint8_t ROW_Pos = (2U) ;
-uint32_t ROW_Msk = (0xFF << ROW_Pos);		// LED row bit mask
 volatile uint32_t analogData = 0;		// 9-bit ADC
 volatile uint32_t voltBars = 0;			// 3-bit ADC
 volatile uint32_t msTicks = 0;			// store millisecond ticks
@@ -32,7 +33,7 @@ void configEnableLEDS(void);
 void configADC(void);
 void test1(void);
 void testLEDrow(void);
-void configAWD(void);
+// void configAWD(void);
 // [AWD-triggered interrupt prototype]
 
 // SysTick function prototypes
@@ -43,56 +44,30 @@ void delay_ms(uint32_t);
 
 int main(void) {
 	
+	initSysTick();
 	configEnableLEDS();
-	configAWD();
+//	configAWD();
 	configADC();
-	
+		
 	while(1) {
-
+		
 	}
 }
 
 
-//-----------------Tests-------------------//
-
-void test1(void) {
-	
-	// on-board LED1 should turn on if recieving analog data
-	if (analogData > 0 && analogData < (ADC_MAX/3)) {
-		GPIOB->ODR |= (0x1UL << LED1_PIN);
-		GPIOB->ODR &= ~(0x1UL << (LED2_PIN | LED3_PIN));
-	}
-	else if (analogData >= (ADC_MAX/3) && analogData < (2 * ADC_MAX/3)) {
-		GPIOB->ODR |= (0x1UL << LED2_PIN);
-		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED3_PIN));
-	}
-	else if (analogData >= (2 * ADC_MAX/3) && analogData < (3 * ADC_MAX/3)) {
-		GPIOB->ODR |= (0x1UL << LED3_PIN);
-		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED2_PIN));
-	}
-}
-
-void testLEDrow(void) {
-
-	GPIOE->ODR &= ~ROW_Msk;						// light up x out of 8 "bars", representing voltage
-	for (uint8_t i = 0 ; i <= voltBars ; i++) { 
-		GPIOE->ODR |= (1 << i);
-	}
-}
 //-----------------ADC-------------------//
 
 void configADC(void) {
 	
+	/*
+		f_ADC = ADC clock frequency:
+		VDDA = 1.7V to 2.4V	-----	Max: 18MHz
+		VDDA = 2.4V to 3.6V -----	Max: 36MHz
+	*/
 	
-	/*	f_ADC = ADC clock frequency:
-	VDDA = 1.7V to 2.4V	-----	Max: 18MHz
-	VDDA = 2.4V to 3.6V -----	Max: 36MHz
-	
-	In the clear with default 16MHz	*/
-	
-	//Set prescalar to halve the ADC clock (PCLK2), equal to APB2
-	//RCC->CFGR &= ~RCC_CFGR_PPRE2;
-	//RCC->CFGR |= RCC_CFGR_PPRE2_2;
+	//Set prescalar for ADC clock (PCLK2), PCLK2 = APB2
+	RCC->CFGR &= ~RCC_CFGR_PPRE2;
+//	RCC->CFGR |= RCC_CFGR_PPRE2_2 | RCC_CFGR_PPRE2_0;
 	
 	/*
 		0xx: AHB clock not divided
@@ -121,31 +96,33 @@ void configADC(void) {
 
 	// set the sampling rate for channel 10 to 480 cycles
 	ADC1->SMPR1 &= ~ADC_SMPR1_SMP10;
-	ADC1->SMPR1 |= ADC_SMPR1_SMP10;
+	ADC1->SMPR1 |= ADC_SMPR1_SMP10_2;
 	
 	/*
 		000: 3 cycles
-		001: 15 cycles
-		010: 28 cycles
+		001: 15 cycles		ADC_SMPR1_SMP10_0
+		010: 28 cycles		ADC_SMPR1_SMP10_1
 		011: 56 cycles
-		100: 84 cycles
+		100: 84 cycles		ADC_SMPR1_SMP10_2
 		101: 112 cycles
 		110: 144 cycles
 		111: 480 cycles		*/
 	
 	// enable End of Conversion interrupt
 	ADC1->CR1 |= ADC_CR1_EOCIE;
-	NVIC_SetPriority(ADC_IRQn, 0x03UL);
+	NVIC_SetPriority(ADC_IRQn, 0x0UL);
 	NVIC_EnableIRQ(ADC_IRQn);
 	
 	
 	// Continuous conversion mode
-	ADC1->CR2 |= ADC_CR2_CONT;		// This bit is set and cleared by software. If set, 
+//	ADC1->CR2 |= ADC_CR2_CONT;		// This bit is set and cleared by software. If set, 
 									// conversion takes place continuously until it is cleared
 									
 	ADC1->CR2 &= ~ADC_CR1_SCAN;		// Scan mode off
 
-	ADC1->CR2 |= (ADC_CR2_ADON);	// Enable the ADC
+	ADC1->CR2 |= (ADC_CR2_ADON);	// Power up the ADC. When the ADON bit is set for the first time, 
+	delay_ms(1);					// it wakes up the ADC from the Power-down mode.
+	
 	
 	//  Start conversion of regular channels
 	ADC1->CR2 &= ~ADC_CR2_SWSTART;
@@ -169,8 +146,35 @@ void ADC_IRQHandler(void) {
 	
 	testLEDrow();
 	test1();
-	delay_ms(10);
+	delay_ms(5);
+	ADC1->CR2 |= ADC_CR2_SWSTART;							// Start a new conversion
+}
+
+//-----------------Tests-------------------//
+
+void test1(void) {
 	
+	// on-board LED1 should turn on if recieving analog data
+	if (analogData > 0 && analogData < (ADC_MAX/3)) {
+		GPIOB->BSRR |= (0x1UL << LED1_PIN);
+		GPIOB->BSRR &= ~(0x1UL << (LED2_PIN | LED3_PIN));
+	}
+	else if (analogData >= (ADC_MAX/3) && analogData < (2 * ADC_MAX/3)) {
+		GPIOB->BSRR |= (0x1UL << LED2_PIN);
+		GPIOB->BSRR &= ~(0x1UL << (LED1_PIN | LED3_PIN));
+	}
+	else if (analogData >= (2 * ADC_MAX/3) && analogData < (3 * ADC_MAX/3)) {
+		GPIOB->BSRR |= (0x1UL << LED3_PIN);
+		GPIOB->BSRR &= ~(0x1UL << (LED1_PIN | LED2_PIN));
+	}
+}
+
+void testLEDrow(void) {
+
+	GPIOE->BSRR &= ~ROW_Msk;						// light up x out of 8 "bars", representing voltage
+	for (uint8_t i = 0 ; i <= voltBars ; i++) { 
+		GPIOE->BSRR |= (1 << i);
+	}
 }
 
 
