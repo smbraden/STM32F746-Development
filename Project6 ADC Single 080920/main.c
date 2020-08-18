@@ -50,12 +50,10 @@ int main(void) {
 	
 	ADC1->CR2 &= ~ADC_CR2_ADON;				// ADC in power down mode (reset)
 	ADC1->CR2 |= ADC_CR2_ADON;				// Enable the ADC
-	delay_ms(5);
+	delay_ms(10);							// Waking up from deep power down mode
 	
 	while (1) {
 			
-		
-		ADC1->CR2 &= ~ADC_CR2_SWSTART;
 		ADC1->CR2 |= ADC_CR2_SWSTART;		// For single conversion mode, conversion starts when SWSTART bit is set.
 
 		//if(ADC1->SR & ADC_SR_AWD)			// Shut it down if voltage in danger zone

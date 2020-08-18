@@ -3,6 +3,8 @@
 
 #include "stm32f746xx.h"
 
+// void configLED(uint8_t, GPIO_TypeDef*);
+// void configButton(uint8_t , GPIO_TypeDef*);
 
 #define enablePeriphClock(AHBxENR, RCC_AHB1ENR_GPIOxEN) RCC->AHBxENR |= RCC_AHB1ENR_GPIOxEN;
 
@@ -11,9 +13,6 @@
 #define OutputHigh(GPIOx, GPIO_Pin) (GPIOx->ODR |= (1 << GPIO_Pin))
 #define OutputLow(GPIOx, GPIO_Pin) (GPIOx->ODR &= ~(1 << GPIO_Pin))
 #define Toggle(GPIOx, GPIO_Pin) (GPIOx->ODR ^= (1 << GPIO_Pin))
-
-void configLED(uint8_t, GPIO_TypeDef*);
-void configButton(uint8_t, GPIO_TypeDef*);
 
 
 #endif

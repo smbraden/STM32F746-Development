@@ -22,31 +22,27 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT 2016 STMicroelectronics</center></h2>
+  * <h2><center>&copy; Copyright (c) 2016 STMicroelectronics.
+  * All rights reserved.</center></h2>
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * This software component is licensed by ST under BSD 3-Clause license,
+  * the "License"; You may not use this file except in compliance with the
+  * License. You may obtain a copy of the License at:
+  *                        opensource.org/licenses/BSD-3-Clause
   *
   ******************************************************************************
+  */
+
+/** @addtogroup CMSIS
+  * @{
+  */
+
+/** @addtogroup stm32f7xx_system
+  * @{
+  */  
+  
+/** @addtogroup STM32F7xx_System_Private_Includes
+  * @{
   */
 
 #include "stm32f7xx.h"
@@ -59,6 +55,21 @@
   #define HSI_VALUE    ((uint32_t)16000000) /*!< Value of the Internal oscillator in Hz*/
 #endif /* HSI_VALUE */
 
+/**
+  * @}
+  */
+
+/** @addtogroup STM32F7xx_System_Private_TypesDefinitions
+  * @{
+  */
+
+/**
+  * @}
+  */
+
+/** @addtogroup STM32F7xx_System_Private_Defines
+  * @{
+  */
 
 /************************* Miscellaneous Configuration ************************/
 
@@ -69,6 +80,21 @@
                                    This value must be a multiple of 0x200. */
 /******************************************************************************/
 
+/**
+  * @}
+  */
+
+/** @addtogroup STM32F7xx_System_Private_Macros
+  * @{
+  */
+
+/**
+  * @}
+  */
+
+/** @addtogroup STM32F7xx_System_Private_Variables
+  * @{
+  */
 
   /* This variable is updated in three ways:
       1) by calling CMSIS function SystemCoreClockUpdate()
@@ -83,6 +109,22 @@
   const uint8_t APBPrescTable[8] = {0, 0, 0, 0, 1, 2, 3, 4};
 
 /**
+  * @}
+  */
+
+/** @addtogroup STM32F7xx_System_Private_FunctionPrototypes
+  * @{
+  */
+
+/**
+  * @}
+  */
+
+/** @addtogroup STM32F7xx_System_Private_Functions
+  * @{
+  */
+
+/**
   * @brief  Setup the microcontroller system
   *         Initialize the Embedded Flash Interface, the PLL and update the 
   *         SystemFrequency variable.
@@ -92,27 +134,9 @@
 void SystemInit(void)
 {
   /* FPU settings ------------------------------------------------------------*/
-  #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-    SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
-  #endif
-  /* Reset the RCC clock configuration to the default reset state ------------*/
-  /* Set HSION bit */
-  RCC->CR |= (uint32_t)0x00000001;
-
-  /* Reset CFGR register */
-  RCC->CFGR = 0x00000000;
-
-  /* Reset HSEON, CSSON and PLLON bits */
-  RCC->CR &= (uint32_t)0xFEF6FFFF;
-
-  /* Reset PLLCFGR register */
-  RCC->PLLCFGR = 0x24003010;
-
-  /* Reset HSEBYP bit */
-  RCC->CR &= (uint32_t)0xFFFBFFFF;
-
-  /* Disable all interrupts */
-  RCC->CIR = 0x00000000;
+#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+  SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
+#endif
 
   /* Configure the Vector Table location add offset address ------------------*/
 #ifdef VECT_TAB_SRAM
@@ -160,50 +184,61 @@ void SystemInit(void)
   */
 void SystemCoreClockUpdate(void)
 {
-	uint32_t tmp = 0, pllvco = 0, pllp = 2, pllsource = 0, pllm = 2;
+  uint32_t tmp = 0, pllvco = 0, pllp = 2, pllsource = 0, pllm = 2;
+  
+  /* Get SYSCLK source -------------------------------------------------------*/
+  tmp = RCC->CFGR & RCC_CFGR_SWS;
 
-	/* Get SYSCLK source -------------------------------------------------------*/
-	tmp = RCC->CFGR & RCC_CFGR_SWS;
+  switch (tmp)
+  {
+    case 0x00:  /* HSI used as system clock source */
+      SystemCoreClock = HSI_VALUE;
+      break;
+    case 0x04:  /* HSE used as system clock source */
+      SystemCoreClock = HSE_VALUE;
+      break;
+    case 0x08:  /* PLL used as system clock source */
 
-	switch (tmp)
-	{
-		case 0x00:  /* HSI used as system clock source */
-			SystemCoreClock = HSI_VALUE;
-		break;
-		case 0x04:  /* HSE used as system clock source */
-			SystemCoreClock = HSE_VALUE;
-		break;
-		case 0x08:  /* PLL used as system clock source */
+      /* PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N
+         SYSCLK = PLL_VCO / PLL_P
+         */    
+      pllsource = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) >> 22;
+      pllm = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
+      
+      if (pllsource != 0)
+      {
+        /* HSE used as PLL clock source */
+        pllvco = (HSE_VALUE / pllm) * ((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);
+      }
+      else
+      {
+        /* HSI used as PLL clock source */
+        pllvco = (HSI_VALUE / pllm) * ((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);      
+      }
 
-			// PLL_VCO = (HSE_VALUE or HSI_VALUE / PLL_M) * PLL_N
-			// SYSCLK = PLL_VCO / PLL_P
-			pllsource = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) >> 22;
-			pllm = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
-		  
-			if (pllsource != 0)
-			{
-				/* HSE used as PLL clock source */
-				pllvco = (HSE_VALUE / pllm) * ((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);
-			}
-			else
-			{
-				/* HSI used as PLL clock source */
-				pllvco = (HSI_VALUE / pllm) * ((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);      
-			}
-
-			pllp = (((RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >>16) + 1 ) *2;
-			SystemCoreClock = pllvco/pllp;
-		break;
-		default:
-			SystemCoreClock = HSI_VALUE;
-		break;
-	}
-	
-	/* Compute HCLK frequency --------------------------------------------------*/
-	/* Get HCLK prescaler */
-	tmp = AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
-	/* HCLK frequency */
-	SystemCoreClock >>= tmp;
+      pllp = (((RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >>16) + 1 ) *2;
+      SystemCoreClock = pllvco/pllp;
+      break;
+    default:
+      SystemCoreClock = HSI_VALUE;
+      break;
+  }
+  /* Compute HCLK frequency --------------------------------------------------*/
+  /* Get HCLK prescaler */
+  tmp = AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
+  /* HCLK frequency */
+  SystemCoreClock >>= tmp;
 }
 
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
+  
+/**
+  * @}
+  */    
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

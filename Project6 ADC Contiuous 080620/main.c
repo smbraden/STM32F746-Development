@@ -156,16 +156,16 @@ void test1(void) {
 	
 	// on-board LED1 should turn on if recieving analog data
 	if (analogData > 0 && analogData < (ADC_MAX/3)) {
-		GPIOB->BSRR |= (0x1UL << LED1_PIN);
-		GPIOB->BSRR &= ~(0x1UL << (LED2_PIN | LED3_PIN));
+		GPIOB->ODR |= (0x1UL << LED1_PIN);
+		GPIOB->ODR &= ~(0x1UL << (LED2_PIN | LED3_PIN));
 	}
 	else if (analogData >= (ADC_MAX/3) && analogData < (2 * ADC_MAX/3)) {
-		GPIOB->BSRR |= (0x1UL << LED2_PIN);
-		GPIOB->BSRR &= ~(0x1UL << (LED1_PIN | LED3_PIN));
+		GPIOB->ODR |= (0x1UL << LED2_PIN);
+		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED3_PIN));
 	}
 	else if (analogData >= (2 * ADC_MAX/3) && analogData < (3 * ADC_MAX/3)) {
-		GPIOB->BSRR |= (0x1UL << LED3_PIN);
-		GPIOB->BSRR &= ~(0x1UL << (LED1_PIN | LED2_PIN));
+		GPIOB->ODR |= (0x1UL << LED3_PIN);
+		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED2_PIN));
 	}
 }
 
@@ -173,9 +173,11 @@ void testLEDrow(void) {
 
 	GPIOE->BSRR &= ~ROW_Msk;						// light up x out of 8 "bars", representing voltage
 	for (uint8_t i = 0 ; i <= voltBars ; i++) { 
-		GPIOE->BSRR |= (1 << i);
+		GPIOE->ODR |= (1 << i);
 	}
+
 }
+
 
 
 //---------------- ADC Watchodg-----------------//
