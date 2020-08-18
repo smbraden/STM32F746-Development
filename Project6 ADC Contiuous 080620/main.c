@@ -115,7 +115,7 @@ void configADC(void) {
 	
 	
 	// Continuous conversion mode
-//	ADC1->CR2 |= ADC_CR2_CONT;		// This bit is set and cleared by software. If set, 
+	ADC1->CR2 |= ADC_CR2_CONT;		// This bit is set and cleared by software. If set, 
 									// conversion takes place continuously until it is cleared
 									
 	ADC1->CR2 &= ~ADC_CR1_SCAN;		// Scan mode off

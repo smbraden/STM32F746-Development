@@ -117,7 +117,7 @@ void configUART(void) {
 	
 
 	// GPIO alternate function configuration					// AFR[0] is for the lower pins' register
-    GPIOC->AFR[0] &= ~(GPIO_AFRL_AFRL6 & GPIO_AFRL_AFRL7);		// 
+    GPIOC->AFR[0] &= ~(GPIO_AFRL_AFRL6 |GPIO_AFRL_AFRL7);		// 
     GPIOC->AFR[0] |=  GPIO_AFRL_AFRL6_3 | GPIO_AFRL_AFRL7_3;	// UART6 Alt function bits: AF8 = 0b1000
 	
 	//--------------------Redundant default settings---------------------//

@@ -17,6 +17,9 @@ Dependencies:	CMSIS Core, STM32F746xx Startup files
 #include "pinDefines.h"
 
 
+#define ADC_MAX 4096					// 256	| 512	| 1024	| 2048	| 4096
+#define ADC_BITS 12					// 8	| 9		| 10	| 11	| 12
+
 
 // Global variables
 uint32_t ROW_MASK = (0xFF << 2);		// LED row bit mask
@@ -29,7 +32,7 @@ volatile uint32_t msTicks = 0;			// store millisecond ticks
 void configAWD(void);
 void configEnableLEDS(void);
 void configADC(void);
-void testLED1(void);
+void test1(void);
 void testLEDrow(void);
 
 
@@ -41,25 +44,27 @@ void delay_ms(uint32_t);
 
 int main(void) {
 	
-	configADC();							// Configure ADC
-	configAWD();
 	configEnableLEDS();						// Configure and enable LEDs
+	//configAWD();
+	configADC();							// Configure ADC
+	
+	ADC1->CR2 &= ~ADC_CR2_ADON;				// ADC in power down mode (reset)
+	ADC1->CR2 |= ADC_CR2_ADON;				// Enable the ADC
+	delay_ms(5);
 	
 	while (1) {
 			
-		ADC1->CR2 |= ADC_CR2_ADON;			// Enable the ADC
+		
 		ADC1->CR2 &= ~ADC_CR2_SWSTART;
 		ADC1->CR2 |= ADC_CR2_SWSTART;		// For single conversion mode, conversion starts when SWSTART bit is set.
 
-		if(ADC1->SR & ADC_SR_AWD)			// Shut it down if voltage in danger zone
-			break;							// The AWD analog watchdog status bit is set 
-											// if the analog voltage converted by the ADC is
-											// below a lower threshold or above a higher threshold.
+		//if(ADC1->SR & ADC_SR_AWD)			// Shut it down if voltage in danger zone
+		//	break;							
 		
-		while(!(ADC1->SR & ADC_SR_EOC)){}
+		while(!(ADC1->SR & ADC_SR_EOC)){}	// wait for conversion
 		analogData = ADC1->DR;				// get converted data		
-		ADC1->CR2 &= ~ADC_CR2_ADON;			// put ADC in power down mode
-		testLED1(); 
+		
+		test1(); 
 		testLEDrow(); 	
 		delay_ms(10);
 	}	
@@ -67,25 +72,28 @@ int main(void) {
 
 //------------------Testing---------------------//
 
-void testLED1(void) {
+void test1(void) {
 	
-	// on-board LED1 should turn on if recieved analog data above threshold
-	// From observation, the default appears to be 9-bit data, consistent
-	// with the bit shift of 6 for testLEDrow() required to fit in 3 bits
-	if (analogData > 330) {	 // max 512
+	// The on-board LED that turns on indicates which range the reading is in
+	if (analogData > 0 && analogData < (ADC_MAX/3)) {
 		GPIOB->ODR |= (0x1UL << LED1_PIN);
+		GPIOB->ODR &= ~(0x1UL << (LED2_PIN | LED3_PIN));
 	}
-	else {
-		GPIOB->ODR &= ~(0x1UL << LED1_PIN);
+	else if (analogData >= (ADC_MAX/3) && analogData < (2 * ADC_MAX/3)) {
+		GPIOB->ODR |= (0x1UL << LED2_PIN);
+		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED3_PIN));
+	}
+	else if (analogData >= (2 * ADC_MAX/3) && analogData < (3 * ADC_MAX/3)) {
+		GPIOB->ODR |= (0x1UL << LED3_PIN);
+		GPIOB->ODR &= ~(0x1UL << (LED1_PIN | LED2_PIN));
 	}
 }
 
 
 void testLEDrow(void) {
 	
-	// 9-bit analog data shifted to 3-bit for 8 LEDs
-	voltBars = (analogData >> 6);
-	// voltBars = (analogData >> 9);	// for 12-bit analog data
+	// x-bit analog data shifted to 3-bit for 8 LEDs
+	voltBars = (analogData >> (ADC_BITS - 3));
 	
 	// light up x out of 8 "bars", represent voltage across photoresistor relative to Vcc
 	GPIOE->ODR &= ~ROW_MASK;
@@ -115,16 +123,16 @@ void configADC(void) {
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;	// using ADC on PA0
 		
+	ADC1->CR2 &= ~ADC_CR2_CONT;					// single, not continuous mode
+	ADC1->CR1 &= ~ADC_CR1_SCAN;					// Single channel, not scan mode
 	
-	// set ADC Pin to analog mode
-	GPIOA->OTYPER &= ~(0x1UL << ADC_PIN);
+	// set ADC GPIO Pin to analog mode
 	GPIOA->PUPDR &= ~(0x3UL << (ADC_PIN * 2));
-	GPIOA->OSPEEDR &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->MODER &= ~(0x3UL << (ADC_PIN * 2));
 	GPIOA->MODER |= (0x3UL << (ADC_PIN * 2));
-	
-	// ADC's are "Additional functions," not "Alternate functions":
-	// Functions directly selected/enabled through peripheral registers
+	GPIOA->OTYPER &= ~(0x1UL << ADC_PIN);
+	GPIOA->OSPEEDR &= ~(0x3UL << (ADC_PIN * 2));
+
 	
 	// set L[3:0] to 0b0000 for 1 conversion
 	ADC1->SQR1 &= ~ADC_SQR1_L;
@@ -145,7 +153,8 @@ void configADC(void) {
 		101: 112 cycles
 		110: 144 cycles
 		111: 480 cycles		*/
-	
+		
+
 }
 
 
@@ -164,7 +173,7 @@ void configAWD(void) {
 	
 	// Configure ADC watchdog higher threahold to 3.6V
 	ADC1->HTR &= ~ADC_HTR_HT;
-	ADC1->HTR |= (512 << ADC_HTR_HT_Pos); 	// 9-bit
+	ADC1->HTR |= (ADC_MAX << ADC_HTR_HT_Pos); 	// 9-bit
 
 	// Analog watchdog enable on regular channels
 	ADC1->CR1 &= ~ADC_CR1_AWDEN;
@@ -185,6 +194,8 @@ void configEnableLEDS(void) {
 	
 	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;			// enable GPIOB peripheral clock
 	configLED(LED1_PIN, GPIOB);						// set the onboard LED likewise
+	configLED(LED2_PIN, GPIOB);						// set the onboard LED likewise
+	configLED(LED3_PIN, GPIOB);						// set the onboard LED likewise
 }
 
 
